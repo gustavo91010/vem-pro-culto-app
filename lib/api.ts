@@ -1,7 +1,30 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+// URLs dos backends
+const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_URL || "http://20.246.66.131:8082"
+const VPC_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://20.246.66.131:8084"
 
-async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+// Função base para chamadas ao VPC-API (inclui o token automaticamente)
+async function fetchVpcApi<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('vpc_token') : null;
+
+  const res = await fetch(`${VPC_API_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+      ...options?.headers,
+    },
+  })
+
+  if (!res.ok) {
+    throw new Error(`VPC API error: ${res.status} ${res.statusText}`)
+  }
+
+  return res.json()
+}
+
+// Função base para chamadas ao Authentication-MS
+export async function fetchAuthApi<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`${AUTH_API_URL}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -10,13 +33,14 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
   })
 
   if (!res.ok) {
-    throw new Error(`API error: ${res.status} ${res.statusText}`)
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || `Auth API error: ${res.status}`);
   }
 
   return res.json()
 }
 
-// --- Tipos baseados na API ---
+// --- Interfaces ---
 
 export interface AtividadeApi {
   id: number
@@ -24,36 +48,55 @@ export interface AtividadeApi {
   nomeIgreja: string
   tipo: string
   descricao: string
-  horario: string // ISO datetime
+  horario: string
 }
 
-export interface AtividadeListApi {
-  atividades: AtividadeApi[]
+export interface IgrejaApi {
+  id: number
+  nome: string
+  endereco: string
+  cidade: string
+  uf: string
+  telefone?: string
+}
+
+export interface UsuarioVpcApi {
+  id: string
+  nome: string
+  email: string
+  cpf?: string
+  telefone?: string
 }
 
 // --- Atividades ---
 
 export async function listarTodasAtividades(): Promise<AtividadeApi[]> {
-  const data = await fetchApi<AtividadeListApi>("/atividade/listar")
-  return data.atividades
+  return fetchVpcApi<AtividadeApi[]>("/atividade/listar")
 }
 
 export async function buscarAtividadePorId(id: number): Promise<AtividadeApi> {
-  const data = await fetchApi<AtividadeApi>(`/atividade/id/${id}`)
-  return data
+  return fetchVpcApi<AtividadeApi>(`/atividade/id/${id}`)
 }
 
-export async function listarAtividadesPorTipo(tipo: string): Promise<AtividadeApi[]> {
-  const todas = await listarTodasAtividades()
-  return todas.filter((a) => a.tipo === tipo)
+// --- Igrejas ---
+
+export async function listarIgrejas(): Promise<IgrejaApi[]> {
+  return fetchVpcApi<IgrejaApi[]>("/igreja/listar")
 }
 
-export async function listarCultosPorIgreja(igrejaId: number): Promise<AtividadeApi[]> {
-  const todas = await listarTodasAtividades()
-  return todas.filter((a) => a.igrejaId === igrejaId && a.tipo === "CULTO")
+export async function buscarIgrejaPorId(id: number): Promise<IgrejaApi> {
+  return fetchVpcApi<IgrejaApi>(`/igreja/id/${id}`)
 }
 
-export async function listarAtividadesPorIgreja(igrejaId: number): Promise<AtividadeApi[]> {
-  const todas = await listarTodasAtividades()
-  return todas.filter((a) => a.igrejaId === igrejaId)
+export async function criarIgreja(dados: Partial<IgrejaApi>): Promise<IgrejaApi> {
+  return fetchVpcApi<IgrejaApi>("/igreja/salvar", {
+    method: "POST",
+    body: JSON.stringify(dados)
+  })
+}
+
+// --- Usuário (Dados no VPC-API) ---
+
+export async function getPerfilUsuario(): Promise<UsuarioVpcApi> {
+  return fetchVpcApi<UsuarioVpcApi>("/usuario/perfil")
 }
