@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button"
 import { ChurchCard } from "@/components/church-card"
 import { ActivityCard } from "@/components/activity-card"
 import { SearchFilters } from "@/components/search-filters"
-import { searchChurches } from "@/lib/mock-data"
-import { listarTodasAtividades, type AtividadeApi } from "@/lib/api"
-import type { Activity } from "@/lib/mock-data"
+import { listarTodasAtividades, listarTodasIgrejas, type AtividadeApi, type IgrejaApi } from "@/lib/api"
+import { churches as mockChurches } from "@/lib/mock-data"
+import type { Activity, Church as ChurchType } from "@/lib/mock-data"
 
 function mapAtividadeToActivity(a: AtividadeApi): Activity & { churchName: string } {
   const horario = new Date(a.horario)
@@ -26,18 +26,54 @@ function mapAtividadeToActivity(a: AtividadeApi): Activity & { churchName: strin
   }
 }
 
+function mapIgrejaToChurch(i: IgrejaApi): ChurchType {
+  return {
+    id: String(i.id),
+    name: i.nome,
+    address: i.endereco,
+    city: i.cidade,
+    neighborhood: i.bairro,
+    phone: i.telefone,
+    email: i.email,
+    website: i.site,
+    lat: i.latitude,
+    lng: i.longitude,
+    description: i.descricao,
+    imageUrl: "/images/churches/default.jpg",
+    activities: [],
+  }
+}
+
 export default function HomePage() {
   const [query, setQuery] = useState("")
   const [category, setCategory] = useState("")
   const [upcomingActivities, setUpcomingActivities] = useState<(Activity & { churchName: string })[]>([])
+  const [apiChurches, setApiChurches] = useState<ChurchType[]>([])
 
-  const filteredChurches = useMemo(
-    () =>
-      searchChurches(query, {
-        category: category || undefined,
-      }),
-    [query, category]
-  )
+  const filteredChurches = useMemo(() => {
+    let results = apiChurches
+
+    if (query) {
+      const q = query.toLowerCase()
+      results = results.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          c.city.toLowerCase().includes(q) ||
+          c.neighborhood.toLowerCase().includes(q) ||
+          c.address.toLowerCase().includes(q)
+      )
+    }
+
+    if (category) {
+      results = results.filter((c) =>
+        c.activities?.some(
+          (a) => a.category.toLowerCase() === category.toLowerCase()
+        )
+      )
+    }
+
+    return results
+  }, [query, category, apiChurches])
 
   useEffect(() => {
     listarTodasAtividades()
@@ -45,13 +81,24 @@ export default function HomePage() {
         const now = new Date()
         const mapped = atividades
           .map(mapAtividadeToActivity)
-          .filter((a) => new Date(a.date) >= now)
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
           .slice(0, 4)
         setUpcomingActivities(mapped)
       })
       .catch((err) => {
         console.error("Erro ao buscar atividades:", err)
+        setUpcomingActivities([])
+      })
+
+    listarTodasIgrejas()
+      .then((igrejas) => {
+        if (igrejas) {
+          setApiChurches(igrejas.map(mapIgrejaToChurch))
+        }
+      })
+      .catch((err) => {
+        console.error("Erro ao buscar igrejas:", err)
+        setApiChurches([])
       })
   }, [])
 

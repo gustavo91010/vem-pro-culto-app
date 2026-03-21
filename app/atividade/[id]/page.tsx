@@ -17,8 +17,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { getActivityById, getChurchById } from "@/lib/mock-data"
-import { buscarAtividadePorId, type AtividadeApi } from "@/lib/api"
+import { getActivityById, getChurchById as getMockChurchById, type Church as ChurchType } from "@/lib/mock-data"
+import { buscarAtividadePorId, buscarIgrejaPorId, type AtividadeApi, type IgrejaApi } from "@/lib/api"
 
 const categoryImages: Record<string, string> = {
   evento: "/images/activities/evento.jpg",
@@ -35,6 +35,24 @@ function getCategoryImage(category: string): string {
   return categoryImages[key] || categoryImages.evento
 }
 
+function mapIgrejaToChurch(i: IgrejaApi): ChurchType {
+  return {
+    id: String(i.id),
+    name: i.nome,
+    address: i.endereco,
+    city: i.cidade,
+    neighborhood: i.bairro,
+    phone: i.telefone,
+    email: i.email,
+    website: i.site,
+    lat: i.latitude,
+    lng: i.longitude,
+    description: i.descricao,
+    imageUrl: "/images/churches/default.jpg",
+    activities: [],
+  }
+}
+
 export default function ActivityDetailPage({
   params,
 }: {
@@ -43,17 +61,24 @@ export default function ActivityDetailPage({
   const { id } = use(params)
   const [isParticipating, setIsParticipating] = useState(false)
   const [apiData, setApiData] = useState<AtividadeApi | null>(null)
+  const [church, setChurch] = useState<ChurchType | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     buscarAtividadePorId(Number(id))
-      .then(setApiData)
+      .then((data) => {
+        setApiData(data)
+        if (data && data.igrejaId) {
+          buscarIgrejaPorId(data.igrejaId)
+            .then((i) => {
+              if (i) setChurch(mapIgrejaToChurch(i))
+            })
+            .catch((err) => console.error("Erro ao buscar igreja:", err))
+        }
+      })
       .catch((err) => console.error("Erro ao buscar atividade:", err))
       .finally(() => setLoading(false))
   }, [id])
-
-  // Fallback para mock enquanto igrejas não estão integradas
-  const mockData = getActivityById(id)
 
   if (loading) {
     return (
@@ -63,25 +88,22 @@ export default function ActivityDetailPage({
     )
   }
 
-  // Usa dados da API se disponível, senão fallback para mock
-  const activity = apiData
-    ? {
-        id: String(apiData.id),
-        churchId: String(apiData.igrejaId),
-        name: apiData.descricao,
-        description: apiData.descricao,
-        date: new Date(apiData.horario).toISOString().split("T")[0],
-        time: new Date(apiData.horario).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-        category: apiData.tipo,
-      }
-    : mockData
-      ? { ...mockData, church: undefined }
-      : null
+  // Usa apenas dados da API
+  if (!apiData) {
+    notFound()
+  }
 
-  // Igreja: ainda usa mock por enquanto
-  const church = apiData
-    ? getChurchById(String(apiData.igrejaId))
-    : mockData?.church
+  const activity = {
+    id: String(apiData.id),
+    churchId: String(apiData.igrejaId),
+    name: apiData.descricao,
+    description: apiData.descricao,
+    date: new Date(apiData.horario).toISOString().split("T")[0],
+    time: new Date(apiData.horario).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+    category: apiData.tipo,
+  }
+
+  const finalChurch = church
 
   if (!activity) {
     notFound()
@@ -113,7 +135,7 @@ export default function ActivityDetailPage({
       `DTEND:${formatICS(endDate)}`,
       `SUMMARY:${activity.name}`,
       `DESCRIPTION:${activity.description}`,
-      `LOCATION:${church ? `${church.address}, ${church.neighborhood} - ${church.city}` : ""}`,
+      `LOCATION:${finalChurch ? `${finalChurch.address}, ${finalChurch.neighborhood} - ${finalChurch.city}` : ""}`,
       "END:VEVENT",
       "END:VCALENDAR",
     ].join("\n")
@@ -129,13 +151,13 @@ export default function ActivityDetailPage({
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      {church ? (
+      {finalChurch ? (
         <Link
-          href={`/igreja/${church.id}`}
+          href={`/igreja/${finalChurch.id}`}
           className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          Voltar para {church.name}
+          Voltar para {finalChurch.name}
         </Link>
       ) : (
         <Link
@@ -183,26 +205,26 @@ export default function ActivityDetailPage({
               <Clock className="h-5 w-5 text-primary" />
               <span>{activity.time}</span>
             </div>
-            {church && (
+            {finalChurch && (
               <>
                 <div className="flex items-center gap-3">
                   <Church className="h-5 w-5 text-primary" />
                   <Link
-                    href={`/igreja/${church.id}`}
+                    href={`/igreja/${finalChurch.id}`}
                     className="text-primary hover:underline"
                   >
-                    {church.name}
+                    {finalChurch.name}
                   </Link>
                 </div>
                 <div className="flex items-start gap-3 text-muted-foreground">
                   <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary/60" />
                   <span>
-                    {church.address}, {church.neighborhood} - {church.city}
+                    {finalChurch.address}, {finalChurch.neighborhood} - {finalChurch.city}
                   </span>
                 </div>
               </>
             )}
-            {!church && apiData?.nomeIgreja && (
+            {!finalChurch && apiData?.nomeIgreja && (
               <div className="flex items-center gap-3">
                 <Church className="h-5 w-5 text-primary" />
                 <span>{apiData.nomeIgreja}</span>

@@ -12,7 +12,7 @@ import { AlertCircle, LogIn, UserPlus } from "lucide-react"
 
 export function LoginForm() {
   const router = useRouter()
-  const { login, register } = useAuth()
+  const { login, register, isLoading } = useAuth()
   const [error, setError] = useState("")
 
   const [loginEmail, setLoginEmail] = useState("")
@@ -23,14 +23,14 @@ export function LoginForm() {
   const [regPassword, setRegPassword] = useState("")
   const [regConfirm, setRegConfirm] = useState("")
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     if (!loginEmail || !loginPassword) {
       setError("Preencha todos os campos.")
       return
     }
-    const result = login(loginEmail, loginPassword)
+    const result = await login(loginEmail, loginPassword)
     if (result.success) {
       router.push("/")
     } else {
@@ -38,7 +38,7 @@ export function LoginForm() {
     }
   }
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     if (!regName || !regEmail || !regPassword || !regConfirm) {
@@ -53,7 +53,7 @@ export function LoginForm() {
       setError("A senha deve ter pelo menos 6 caracteres.")
       return
     }
-    const result = register(regName, regEmail, regPassword)
+    const result = await register(regName, regEmail, regPassword)
     if (result.success) {
       router.push("/")
     } else {
@@ -95,6 +95,7 @@ export function LoginForm() {
                   placeholder="seu@email.com"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
+                  disabled={isLoading}
                   className="bg-card border-border"
                 />
               </div>
@@ -106,15 +107,22 @@ export function LoginForm() {
                   placeholder="Sua senha"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
+                  disabled={isLoading}
                   className="bg-card border-border"
                 />
               </div>
-              <Button type="submit" className="w-full">
-                <LogIn className="mr-2 h-4 w-4" />
-                Entrar
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  "Carregando..."
+                ) : (
+                  <>
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Entrar
+                  </>
+                )}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
-                {"Teste: admin@igrejas.com / admin123"}
+                {"Consumindo API: " + process.env.NEXT_PUBLIC_AUTH_API_URL}
               </p>
             </form>
           </TabsContent>
@@ -129,6 +137,7 @@ export function LoginForm() {
                   placeholder="Seu nome"
                   value={regName}
                   onChange={(e) => setRegName(e.target.value)}
+                  disabled={isLoading}
                   className="bg-card border-border"
                 />
               </div>
@@ -140,6 +149,7 @@ export function LoginForm() {
                   placeholder="seu@email.com"
                   value={regEmail}
                   onChange={(e) => setRegEmail(e.target.value)}
+                  disabled={isLoading}
                   className="bg-card border-border"
                 />
               </div>
@@ -151,6 +161,7 @@ export function LoginForm() {
                   placeholder="Minimo 6 caracteres"
                   value={regPassword}
                   onChange={(e) => setRegPassword(e.target.value)}
+                  disabled={isLoading}
                   className="bg-card border-border"
                 />
               </div>
@@ -162,17 +173,25 @@ export function LoginForm() {
                   placeholder="Repita a senha"
                   value={regConfirm}
                   onChange={(e) => setRegConfirm(e.target.value)}
+                  disabled={isLoading}
                   className="bg-card border-border"
                 />
               </div>
-              <Button type="submit" className="w-full">
-                <UserPlus className="mr-2 h-4 w-4" />
-                Criar conta
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  "Carregando..."
+                ) : (
+                  <>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Criar conta
+                  </>
+                )}
               </Button>
             </form>
           </TabsContent>
         </Tabs>
       </CardContent>
     </Card>
+
   )
 }
