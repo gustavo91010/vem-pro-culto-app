@@ -1,98 +1,68 @@
 "use client"
 
-import { useEffect } from "react"
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
+import { useEffect, useRef, useState } from "react"
 import L from "leaflet"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { MapPin, ExternalLink } from "lucide-react"
-import type { Church } from "@/lib/mock-data"
 import "leaflet/dist/leaflet.css"
+import type { IgrejaApi } from "@/lib/api"
 
-// Fix default marker icons for Leaflet in Next.js
 const defaultIcon = L.icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
 })
 
-L.Marker.prototype.options.icon = defaultIcon
+interface Props {
+  churches: IgrejaApi[]
+  focusChurchId?: number | null
+}
 
-function FlyToChurch({ lat, lng }: { lat: number; lng: number }) {
-  const map = useMap()
+export default function MapView({ churches, focusChurchId }: Props) {
+  const mapRef = useRef<L.Map | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
-    if (lat && lng) {
-      map.flyTo([lat, lng], 15, { duration: 1.5 })
+    if (!containerRef.current || mapRef.current) return
+
+    const focusChurch = focusChurchId
+      ? churches.find((c) => c.id === focusChurchId)
+      : null
+
+    const center: [number, number] = focusChurch
+      ? [focusChurch.latitude, focusChurch.longitude]
+      : [-23.5505, -46.6333]
+
+    const zoom = focusChurch ? 15 : 11
+
+    const map = L.map(containerRef.current).setView(center, zoom)
+    mapRef.current = map
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map)
+
+    churches
+      .filter((c) => c.latitude && c.longitude)
+      .forEach((church) => {
+        const marker = L.marker([church.latitude, church.longitude], { icon: defaultIcon }).addTo(map)
+        marker.bindPopup(
+          `<div>
+            <strong>${church.nome}</strong>
+            <p>${church.endereco}</p>
+            <a href="/igreja/${church.id}">Ver detalhes</a>
+          </div>`
+        )
+      })
+
+    if (focusChurch) {
+      map.flyTo([focusChurch.latitude, focusChurch.longitude], 15)
     }
-  }, [lat, lng, map])
-  return null
-}
 
-interface MapViewProps {
-  churches: Church[]
-  focusChurchId?: string | null
-}
+    return () => {
+      map.remove()
+      mapRef.current = null
+    }
+  }, [churches, focusChurchId])
 
-export function MapView({ churches, focusChurchId }: MapViewProps) {
-  const focusChurch = focusChurchId
-    ? churches.find((c) => c.id === focusChurchId)
-    : null
-
-  const center: [number, number] = focusChurch
-    ? [focusChurch.lat, focusChurch.lng]
-    : [-23.5505, -46.6333]
-
-  const zoom = focusChurch ? 15 : 11
-
-  return (
-    <MapContainer
-      center={center}
-      zoom={zoom}
-      className="h-full w-full rounded-lg"
-      scrollWheelZoom={true}
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-
-      {focusChurch && (
-        <FlyToChurch lat={focusChurch.lat} lng={focusChurch.lng} />
-      )}
-
-      {churches.map((church) => (
-        <Marker key={church.id} position={[church.lat, church.lng]}>
-          <Popup>
-            <div className="flex flex-col gap-2 p-1 min-w-[200px]">
-              <h3 className="font-semibold text-sm leading-tight">
-                {church.name}
-              </h3>
-              <div className="flex items-start gap-1.5 text-xs text-gray-600">
-                <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
-                <span>
-                  {church.address}, {church.neighborhood}
-                </span>
-              </div>
-              {church.activities[0] && (
-                <p className="text-xs text-gray-500">
-                  {church.activities[0].name}
-                </p>
-              )}
-              <Button asChild size="sm" className="mt-1 w-full h-7 text-xs">
-                <Link href={`/igreja/${church.id}`}>
-                  Ver detalhes
-                  <ExternalLink className="ml-1 h-3 w-3" />
-                </Link>
-              </Button>
-            </div>
-          </Popup>
-        </Marker>
-      ))}
-    </MapContainer>
-  )
+  return <div ref={containerRef} className="h-full w-full rounded-lg" />
 }

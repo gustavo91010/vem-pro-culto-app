@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
-import { Church, MapPin, Shield, LogIn, LogOut, Menu, X, User } from "lucide-react"
+import { Church, MapPin, Shield, LogIn, LogOut, Menu, X, User, PlusCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { cn } from "@/lib/utils"
@@ -49,6 +49,32 @@ export function Header() {
               </Link>
             )
           })}
+          {user && (
+            <Link
+              href="/minhas-igrejas"
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                pathname === "/minhas-igrejas"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <Church className="h-4 w-4" />
+              Minhas Igrejas
+            </Link>
+          )}
+          {user && (
+            <Link
+              href="/registrar-igreja"
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors text-primary hover:bg-primary/10",
+                pathname === "/registrar-igreja" && "bg-primary/10"
+              )}
+            >
+              <PlusCircle className="h-4 w-4" />
+              Cadastrar Igreja
+            </Link>
+          )}
           {isAdmin && (
             <Link
               href="/admin"
@@ -120,6 +146,34 @@ export function Header() {
                 </Link>
               )
             })}
+            {user && (
+              <Link
+                href="/minhas-igrejas"
+                onClick={() => setMobileOpen(false)}
+                className={cn(
+                  "flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+                  pathname === "/minhas-igrejas"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <Church className="h-4 w-4" />
+                Minhas Igrejas
+              </Link>
+            )}
+            {user && (
+              <Link
+                href="/registrar-igreja"
+                onClick={() => setMobileOpen(false)}
+                className={cn(
+                  "flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-colors text-primary hover:bg-primary/10",
+                  pathname === "/registrar-igreja" && "bg-primary/10"
+                )}
+              >
+                <PlusCircle className="h-4 w-4" />
+                Cadastrar Igreja
+              </Link>
+            )}
             {isAdmin && (
               <Link
                 href="/admin"
