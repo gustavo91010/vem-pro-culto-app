@@ -30,9 +30,10 @@ export default function MapView({ churches, focusChurchId }: Props) {
       ? churches.find((c) => c.id === focusChurchId)
       : null
 
-    const center: [number, number] = focusChurch
-      ? [focusChurch.latitude, focusChurch.longitude]
-      : [-23.5505, -46.6333]
+    const centerLat = focusChurch?.endereco?.latitude || focusChurch?.latitude || -23.5505;
+    const centerLng = focusChurch?.endereco?.longitude || focusChurch?.longitude || -46.6333;
+
+    const center: [number, number] = [centerLat, centerLng];
 
     const zoom = focusChurch ? 15 : 11
 
@@ -42,20 +43,27 @@ export default function MapView({ churches, focusChurchId }: Props) {
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map)
 
     churches
-      .filter((c) => c.latitude && c.longitude)
+      .filter((c) => (c.endereco?.latitude || c.latitude) && (c.endereco?.longitude || c.longitude))
       .forEach((church) => {
-        const marker = L.marker([church.latitude, church.longitude], { icon: defaultIcon }).addTo(map)
+        const lat = church.endereco?.latitude || church.latitude || 0;
+        const lng = church.endereco?.longitude || church.longitude || 0;
+        const nome = church.nomeFantasia || church.nome || church.razaoSocial;
+        const logradouro = church.endereco?.logradouro || church.endereco || "";
+        
+        const marker = L.marker([lat, lng], { icon: defaultIcon }).addTo(map)
         marker.bindPopup(
           `<div>
-            <strong>${church.nome}</strong>
-            <p>${church.endereco}</p>
-            <a href="/igreja/${church.id}">Ver detalhes</a>
+            <strong>${nome}</strong>
+            <p>${logradouro}</p>
+            <a href="/igreja/${encodeURIComponent(church.razaoSocial)}">Ver detalhes</a>
           </div>`
         )
       })
 
     if (focusChurch) {
-      map.flyTo([focusChurch.latitude, focusChurch.longitude], 15)
+      const flatLat = focusChurch.endereco?.latitude || focusChurch.latitude || 0;
+      const flatLng = focusChurch.endereco?.longitude || focusChurch.longitude || 0;
+      map.flyTo([flatLat, flatLng], 15)
     }
 
     return () => {

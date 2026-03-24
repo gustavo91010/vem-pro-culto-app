@@ -122,7 +122,7 @@ export function LoginForm() {
                 )}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
-                {"Consumindo API: " + process.env.NEXT_PUBLIC_AUTH_API_URL}
+                {"Consumindo API: " + process.env.NEXT_PUBLIC_AUTH_URL}
               </p>
             </form>
           </TabsContent>

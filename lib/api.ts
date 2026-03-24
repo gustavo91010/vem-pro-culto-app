@@ -1,14 +1,14 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8084";
-const AUTH_API_BASE_URL =
-  process.env.NEXT_PUBLIC_AUTH_API_URL || "http://localhost:8082";
-const APPLICATION_NAME = "vem-pro-culto"; // Nome da aplicação registrado no authentication-ms
+const API_BASE_URL = "/api/vpc";
+const AUTH_API_BASE_URL = "/api/auth";
+const APPLICATION_NAME = "vem-pro-culto"; 
 
 async function fetchApi<T>(
   baseUrl: string,
   path: string,
   options?: RequestInit,
 ): Promise<T> {
-  const url = `${baseUrl}${path}`;
+  const fullPath = path.startsWith('/') ? path : `/${path}`;
+  const url = `${baseUrl}${fullPath}`;
   console.log(`[fetchApi] Chamando: ${options?.method || "GET"} ${url}`);
 
   try {
@@ -24,11 +24,16 @@ async function fetchApi<T>(
 
     if (!res.ok) {
       let errorMsg = `API error: ${res.status} ${res.statusText}`;
+      let isNotImplemented = false;
       try {
         const errorJson = await res.json();
         errorMsg = errorJson.message || errorJson.error || errorMsg;
+        isNotImplemented = errorMsg === "Método ainda não implementado";
       } catch (e) { }
-      console.error(`[fetchApi] Erro na API: ${errorMsg}`);
+      
+      if (!isNotImplemented) {
+        console.error(`[fetchApi] Erro na API: ${errorMsg}`);
+      }
       throw new Error(errorMsg);
     }
 
@@ -113,16 +118,27 @@ export interface AtividadeListApi {
 
 export interface IgrejaApi {
   id: number;
-  nome: string;
-  endereco: string;
-  cidade: string;
-  bairro: string;
-  telefone: string;
+  nome?: string;
+  nomeFantasia?: string;
+  razaoSocial: string;
   email: string;
-  site: string;
-  latitude: number;
-  longitude: number;
+  cnpj: string;
   descricao: string;
+  imagemUrl?: string;
+  ativo: boolean;
+  endereco: EnderecoApi;
+  telefone: TelefoneApi[];
+  redesSociais: RedeSocialApi[];
+  // Campos legados/planos (para compatibilidade se necessário)
+  latitude?: number;
+  longitude?: number;
+  cidade?: string;
+  bairro?: string;
+  site?: string;
+}
+
+export interface IgrejaResponse {
+  igreja: IgrejaApi;
 }
 
 export interface IgrejaListApi {
@@ -134,14 +150,20 @@ export interface IgrejaListApi {
 export async function listarTodasAtividades(): Promise<AtividadeApi[]> {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("vpc_token") : null;
-  const data = await fetchApi<AtividadeListApi>(
-    API_BASE_URL,
-    "/atividade/listar",
-    {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    },
-  );
-  return data.atividades;
+  try {
+    const data = await fetchApi<any>(
+      API_BASE_URL,
+      "/atividade/listar",
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      },
+    );
+    // Suporta tanto array direto quanto objeto { atividades: [] }
+    return Array.isArray(data) ? data : (data.atividades || []);
+  } catch (error) {
+    console.error("Erro ao listar atividades, retornando lista vazia:", error);
+    return [];
+  }
 }
 
 export async function registrarAtividade(
@@ -192,13 +214,11 @@ export async function buscarAtividadePorId(id: number): Promise<AtividadeApi> {
 // --- Igrejas ---
 
 export async function listarTodasIgrejas(): Promise<IgrejaApi[]> {
-  const data= await fetchApi<IgrejaListApi>(API_BASE_URL, "/igreja/todos", {
+  const data = await fetchApi<any>(API_BASE_URL, "/igreja/todos", {
     method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
   });
-  return data.igrejas
+  // Suporta tanto array direto quanto objeto { igrejas: [] }
+  return Array.isArray(data) ? data : (data.igrejas || []);
 }
 
 export async function listarMinhasIgrejas(
@@ -206,37 +226,27 @@ export async function listarMinhasIgrejas(
 ): Promise<IgrejaApi[]> {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("vpc_token") : null;
+  const cleanToken = token?.startsWith('Bearer ') ? token.substring(7) : token;
 
-  const data = await fetchApi<IgrejaListApi>(API_BASE_URL, "/igreja/todos", {
-    method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: JSON.stringify({ usuarioId }),
+  const data = await fetchApi<any>(API_BASE_URL, `/igreja/todos?usuarioId=${usuarioId}`, {
+    method: "GET",
+    headers: cleanToken ? { Authorization: cleanToken } : {},
   });
-  return data.igrejas;
+  return Array.isArray(data) ? data : (data.igrejas || []);
 }
 
 export async function registrarIgreja(
   igreja: IgrejaRequest,
 ): Promise<IgrejaApi> {
-  console.log("[registrarIgreja] Iniciando...");
   const token =
     typeof window !== "undefined" ? localStorage.getItem("vpc_token") : null;
-  console.log("[registrarIgreja] Token encontrado:", token ? "Sim" : "Não");
+  if (!token) throw new Error("Usuário não autenticado");
 
-  if (!token) {
-    console.error(
-      "[registrarIgreja] Erro: Token não encontrado no localStorage",
-    );
-    throw new Error("Usuário não autenticado");
-  }
+  const cleanToken = token.startsWith('Bearer ') ? token.substring(7) : token;
 
-  console.log(
-    "[registrarIgreja] Disparando fetchApi para /igreja com token:",
-    token,
-  );
   return fetchApi<IgrejaApi>(API_BASE_URL, "/igreja", {
     method: "POST",
-    headers: { Authorization: token },
+    headers: { Authorization: cleanToken },
     body: JSON.stringify(igreja),
   });
 }
@@ -252,9 +262,36 @@ export async function alternarStatusIgreja(id: number): Promise<any> {
   });
 }
 
-export async function buscarIgrejaPorId(id: number): Promise<IgrejaApi> {
-  const data = await fetchApi<IgrejaApi>(API_BASE_URL, `/igreja/id/${id}`);
-  return data;
+export async function buscarIgrejaPorId(id: number): Promise<IgrejaApi | null> {
+  try {
+    const data = await fetchApi<any>(
+      API_BASE_URL, 
+      `/igreja/id/${id}?igrejaId=${id}`
+    );
+    
+    // O backend retorna um objeto IgrejaResponse que contém o campo 'igreja'
+    return data?.igreja || data;
+  } catch (error) {
+    console.error(`Erro ao buscar igreja por ID ${id}:`, error);
+    return null;
+  }
+}
+
+export async function buscarIgrejaPorRazaoSocial(razaoSocial: string): Promise<IgrejaApi | null> {
+  try {
+    const encodedRazao = encodeURIComponent(razaoSocial);
+    // Usando /igreja/todos com filtro de razaoSocial já que o endpoint específico pode não estar ativo no remoto
+    const data = await fetchApi<any>(
+      API_BASE_URL, 
+      `/igreja/todos?razaoSocial=${encodedRazao}`
+    );
+    
+    const igrejas = Array.isArray(data) ? data : (data.igrejas || []);
+    return igrejas.length > 0 ? igrejas[0] : null;
+  } catch (error) {
+    console.error(`Erro ao buscar igreja por Razao Social ${razaoSocial}:`, error);
+    return null;
+  }
 }
 
 export async function listarCultosPorIgreja(

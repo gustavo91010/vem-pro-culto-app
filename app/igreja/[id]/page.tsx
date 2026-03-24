@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ActivityCard } from "@/components/activity-card"
 import { getChurchById as getMockChurchById, type Church as ChurchType } from "@/lib/mock-data"
-import { listarCultosPorIgreja, listarAtividadesPorIgreja, buscarIgrejaPorId, type AtividadeApi, type IgrejaApi } from "@/lib/api"
+import { listarCultosPorIgreja, listarAtividadesPorIgreja, buscarIgrejaPorRazaoSocial, type AtividadeApi, type IgrejaApi } from "@/lib/api"
 import type { Activity } from "@/lib/mock-data"
 
 function mapAtividadeToActivity(a: AtividadeApi): Activity & { churchName?: string } {
@@ -40,17 +40,17 @@ function mapAtividadeToActivity(a: AtividadeApi): Activity & { churchName?: stri
 function mapIgrejaToChurch(i: IgrejaApi): ChurchType {
   return {
     id: String(i.id),
-    name: i.nome,
-    address: i.endereco,
-    city: i.cidade,
-    neighborhood: i.bairro,
-    phone: i.telefone,
+    name: (i as any).nomeFantasia || i.nome,
+    address: (i as any).endereco?.logradouro || i.endereco,
+    city: (i as any).endereco?.cidade || i.cidade,
+    neighborhood: (i as any).endereco?.bairro || i.bairro,
+    phone: (i as any).telefone?.[0]?.numero || i.telefone,
     email: i.email,
-    website: i.site,
-    lat: i.latitude,
-    lng: i.longitude,
+    website: (i as any).redesSociais?.[0]?.url || i.site,
+    lat: (i as any).endereco?.latitude || i.latitude,
+    lng: (i as any).endereco?.longitude || i.longitude,
     description: i.descricao,
-    imageUrl: "/images/churches/default.jpg",
+    imageUrl: i.imagemUrl || "/images/churches/default.jpg",
     activities: [],
   }
 }
@@ -60,7 +60,7 @@ export default function ChurchProfilePage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  const { id } = use(params)
+  const { id } = use(params) // 'id' here is treated as the razaoSocial string from URL
   const [church, setChurch] = useState<ChurchType | null>(null)
   const [isFavorite, setIsFavorite] = useState(false)
   const [cultos, setCultos] = useState<AtividadeApi[]>([])
@@ -68,39 +68,41 @@ export default function ChurchProfilePage({
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const igrejaId = Number(id)
+    // Agora o 'id' na URL é a razaoSocial (string)
+    const razaoSocial = decodeURIComponent(id)
     
-    // Busca apenas da API
-    buscarIgrejaPorId(igrejaId)
+    buscarIgrejaPorRazaoSocial(razaoSocial)
       .then((i) => {
         if (i) {
           setChurch(mapIgrejaToChurch(i))
+          
+          // Se precisar buscar atividades pelo ID numérico retornado pela busca por razão social
+          const igrejaIdNumerico = i.id
+          if (igrejaIdNumerico) {
+            listarCultosPorIgreja(igrejaIdNumerico)
+              .then((c) => {
+                const now = new Date()
+                setCultos(c.filter((culto) => new Date(culto.horario) >= now)
+                  .sort((a, b) => new Date(a.horario).getTime() - new Date(b.horario).getTime()))
+              })
+              .catch(() => {})
+
+            listarAtividadesPorIgreja(igrejaIdNumerico)
+              .then((a) => {
+                const mapped = a
+                  .filter((at) => at.tipo !== "CULTO")
+                  .map(mapAtividadeToActivity)
+                  .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                setAtividades(mapped)
+              })
+              .catch(() => {})
+          }
         }
       })
       .catch((err) => {
         console.error("Erro ao buscar igreja da API:", err)
       })
       .finally(() => setIsLoading(false))
-
-    listarCultosPorIgreja(igrejaId)
-      .then((c) => {
-        const now = new Date()
-        setCultos(c.filter((culto) => new Date(culto.horario) >= now)
-          .sort((a, b) => new Date(a.horario).getTime() - new Date(b.horario).getTime()))
-      })
-      .catch(() => {})
-
-    listarAtividadesPorIgreja(igrejaId)
-      .then((a) => {
-        const now = new Date()
-        const mapped = a
-          .filter((at) => at.tipo !== "CULTO")
-          .map(mapAtividadeToActivity)
-          // .filter((at) => new Date(at.date) >= now) // Removido para teste
-          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        setAtividades(mapped)
-      })
-      .catch(() => {})
   }, [id])
 
   if (isLoading) {
