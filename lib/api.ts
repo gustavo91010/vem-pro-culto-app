@@ -214,8 +214,13 @@ export async function buscarAtividadePorId(id: number): Promise<AtividadeApi> {
 // --- Igrejas ---
 
 export async function listarTodasIgrejas(): Promise<IgrejaApi[]> {
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("vpc_token") : null;
+  const cleanToken = token?.startsWith('Bearer ') ? token.substring(7) : token;
+
   const data = await fetchApi<any>(API_BASE_URL, "/igreja/todos", {
     method: "GET",
+    headers: cleanToken ? { Authorization: cleanToken } : {},
   });
   // Suporta tanto array direto quanto objeto { igrejas: [] }
   return Array.isArray(data) ? data : (data.igrejas || []);
@@ -256,9 +261,11 @@ export async function alternarStatusIgreja(id: number): Promise<any> {
     typeof window !== "undefined" ? localStorage.getItem("vpc_token") : null;
   if (!token) throw new Error("Usuário não autenticado");
 
+  const cleanToken = token.startsWith('Bearer ') ? token.substring(7) : token;
+
   return fetchApi<any>(API_BASE_URL, `/igreja/alternar-status/${id}`, {
     method: "PATCH",
-    headers: { Authorization: token },
+    headers: { Authorization: cleanToken },
   });
 }
 
@@ -280,14 +287,14 @@ export async function buscarIgrejaPorId(id: number): Promise<IgrejaApi | null> {
 export async function buscarIgrejaPorRazaoSocial(razaoSocial: string): Promise<IgrejaApi | null> {
   try {
     const encodedRazao = encodeURIComponent(razaoSocial);
-    // Usando /igreja/todos com filtro de razaoSocial já que o endpoint específico pode não estar ativo no remoto
+    // O seu backend espera o parâmetro 'razaoSocial' como query param no endpoint específico
     const data = await fetchApi<any>(
       API_BASE_URL, 
-      `/igreja/todos?razaoSocial=${encodedRazao}`
+      `/igreja/razao-social/${encodedRazao}?razaoSocial=${encodedRazao}`
     );
     
-    const igrejas = Array.isArray(data) ? data : (data.igrejas || []);
-    return igrejas.length > 0 ? igrejas[0] : null;
+    // O backend retorna um objeto IgrejaResponse que contém o campo 'igreja'
+    return data?.igreja || data;
   } catch (error) {
     console.error(`Erro ao buscar igreja por Razao Social ${razaoSocial}:`, error);
     return null;

@@ -31,7 +31,7 @@ export function ChurchCard({ church }: ChurchCardProps) {
   }, [church.id])
 
   return (
-    <Link href={`/igreja/${church.id}`} className="group block">
+    <Link href={`/igreja/${encodeURIComponent(church.razaoSocial)}`} className="group block">
       <Card className="h-full overflow-hidden border border-border bg-card transition-all duration-200 hover:border-primary/30 hover:shadow-lg">
         {/* Church Image */}
         <div className="relative h-44 w-full overflow-hidden">

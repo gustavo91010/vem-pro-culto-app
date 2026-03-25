@@ -38,17 +38,18 @@ function getCategoryImage(category: string): string {
 function mapIgrejaToChurch(i: IgrejaApi): ChurchType {
   return {
     id: String(i.id),
-    name: i.nome,
-    address: i.endereco,
-    city: i.cidade,
-    neighborhood: i.bairro,
-    phone: i.telefone,
+    name: i.nomeFantasia || i.nome || i.razaoSocial,
+    razaoSocial: i.razaoSocial,
+    address: (i as any).endereco?.logradouro || i.endereco,
+    city: (i as any).endereco?.cidade || i.cidade,
+    neighborhood: (i as any).endereco?.bairro || i.bairro,
+    phone: (i as any).telefone?.[0]?.numero || i.telefone,
     email: i.email,
-    website: i.site,
-    lat: i.latitude,
-    lng: i.longitude,
+    website: (i as any).redesSociais?.[0]?.url || i.site,
+    lat: (i as any).endereco?.latitude || i.latitude,
+    lng: (i as any).endereco?.longitude || i.longitude,
     description: i.descricao,
-    imageUrl: "/images/churches/default.jpg",
+    imageUrl: i.imagemUrl || "/images/churches/default.jpg",
     activities: [],
   }
 }
@@ -71,9 +72,18 @@ export default function ActivityDetailPage({
         if (data && data.igrejaId) {
           buscarIgrejaPorId(data.igrejaId)
             .then((i) => {
-              if (i) setChurch(mapIgrejaToChurch(i))
+              // Só define a igreja se ela estiver ativa
+              if (i && i.ativo) {
+                setChurch(mapIgrejaToChurch(i))
+              } else {
+                // Se a igreja não estiver ativa, não devemos mostrar a atividade
+                setApiData(null)
+              }
             })
-            .catch((err) => console.error("Erro ao buscar igreja:", err))
+            .catch((err) => {
+              console.error("Erro ao buscar igreja:", err)
+              setApiData(null)
+            })
         }
       })
       .catch((err) => console.error("Erro ao buscar atividade:", err))
@@ -153,7 +163,7 @@ export default function ActivityDetailPage({
     <div className="mx-auto max-w-3xl px-4 py-8">
       {finalChurch ? (
         <Link
-          href={`/igreja/${finalChurch.id}`}
+          href={`/igreja/${encodeURIComponent(finalChurch.razaoSocial)}`}
           className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -210,7 +220,7 @@ export default function ActivityDetailPage({
                 <div className="flex items-center gap-3">
                   <Church className="h-5 w-5 text-primary" />
                   <Link
-                    href={`/igreja/${finalChurch.id}`}
+                    href={`/igreja/${encodeURIComponent(finalChurch.razaoSocial)}`}
                     className="text-primary hover:underline"
                   >
                     {finalChurch.name}

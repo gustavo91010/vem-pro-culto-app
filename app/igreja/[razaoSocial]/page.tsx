@@ -20,9 +20,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ActivityCard } from "@/components/activity-card"
-import { getChurchById as getMockChurchById, type Church as ChurchType } from "@/lib/mock-data"
+import { type Church as ChurchType, type Activity } from "@/lib/mock-data"
 import { listarCultosPorIgreja, listarAtividadesPorIgreja, buscarIgrejaPorRazaoSocial, type AtividadeApi, type IgrejaApi } from "@/lib/api"
-import type { Activity } from "@/lib/mock-data"
 
 function mapAtividadeToActivity(a: AtividadeApi): Activity & { churchName?: string } {
   const horario = new Date(a.horario)
@@ -40,15 +39,16 @@ function mapAtividadeToActivity(a: AtividadeApi): Activity & { churchName?: stri
 function mapIgrejaToChurch(i: IgrejaApi): ChurchType {
   return {
     id: String(i.id),
-    name: (i as any).nomeFantasia || i.nome,
-    address: (i as any).endereco?.logradouro || i.endereco,
-    city: (i as any).endereco?.cidade || i.cidade,
-    neighborhood: (i as any).endereco?.bairro || i.bairro,
-    phone: (i as any).telefone?.[0]?.numero || i.telefone,
+    name: i.nomeFantasia || i.nome || i.razaoSocial,
+    razaoSocial: i.razaoSocial,
+    address: (i as any).endereco?.logradouro || i.endereco || "",
+    city: (i as any).endereco?.cidade || i.cidade || "",
+    neighborhood: (i as any).endereco?.bairro || i.bairro || "",
+    phone: (i as any).telefone?.[0]?.numero || (i as any).telefone || "",
     email: i.email,
-    website: (i as any).redesSociais?.[0]?.url || i.site,
-    lat: (i as any).endereco?.latitude || i.latitude,
-    lng: (i as any).endereco?.longitude || i.longitude,
+    website: (i as any).redesSociais?.[0]?.url || (i as any).site || "",
+    lat: (i as any).endereco?.latitude || i.latitude || 0,
+    lng: (i as any).endereco?.longitude || i.longitude || 0,
     description: i.descricao,
     imageUrl: i.imagemUrl || "/images/churches/default.jpg",
     activities: [],
@@ -58,9 +58,9 @@ function mapIgrejaToChurch(i: IgrejaApi): ChurchType {
 export default function ChurchProfilePage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ razaoSocial: string }>
 }) {
-  const { id } = use(params) // 'id' here is treated as the razaoSocial string from URL
+  const { razaoSocial: encodedRazaoSocial } = use(params)
   const [church, setChurch] = useState<ChurchType | null>(null)
   const [isFavorite, setIsFavorite] = useState(false)
   const [cultos, setCultos] = useState<AtividadeApi[]>([])
@@ -68,15 +68,13 @@ export default function ChurchProfilePage({
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Agora o 'id' na URL é a razaoSocial (string)
-    const razaoSocial = decodeURIComponent(id)
+    const razaoSocial = decodeURIComponent(encodedRazaoSocial)
     
     buscarIgrejaPorRazaoSocial(razaoSocial)
       .then((i) => {
-        if (i) {
+        if (i && i.ativo) {
           setChurch(mapIgrejaToChurch(i))
           
-          // Se precisar buscar atividades pelo ID numérico retornado pela busca por razão social
           const igrejaIdNumerico = i.id
           if (igrejaIdNumerico) {
             listarCultosPorIgreja(igrejaIdNumerico)
@@ -103,7 +101,7 @@ export default function ChurchProfilePage({
         console.error("Erro ao buscar igreja da API:", err)
       })
       .finally(() => setIsLoading(false))
-  }, [id])
+  }, [encodedRazaoSocial])
 
   if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center">Carregando...</div>

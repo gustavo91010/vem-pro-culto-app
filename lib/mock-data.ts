@@ -11,6 +11,7 @@ export interface Activity {
 export interface Church {
   id: string
   name: string
+  razaoSocial: string
   address: string
   city: string
   neighborhood: string
@@ -53,6 +54,7 @@ export const churches: Church[] = [
   {
     id: "1",
     name: "Igreja Batista Central",
+    razaoSocial: "Igreja Batista Central",
     address: "Rua Augusta, 1200",
     city: "Sao Paulo",
     neighborhood: "Consolacao",
@@ -90,6 +92,7 @@ export const churches: Church[] = [
   {
     id: "2",
     name: "Comunidade Evangelica Esperanca",
+    razaoSocial: "Comunidade Evangelica Esperanca",
     address: "Av. Paulista, 900",
     city: "Sao Paulo",
     neighborhood: "Bela Vista",
@@ -117,6 +120,7 @@ export const churches: Church[] = [
   {
     id: "3",
     name: "Igreja Presbiteriana Renovada",
+    razaoSocial: "Igreja Presbiteriana Renovada",
     address: "Rua Oscar Freire, 500",
     city: "Sao Paulo",
     neighborhood: "Pinheiros",
@@ -154,6 +158,7 @@ export const churches: Church[] = [
   {
     id: "4",
     name: "Igreja Metodista de Copacabana",
+    razaoSocial: "Igreja Metodista de Copacabana",
     address: "Rua Barata Ribeiro, 350",
     city: "Rio de Janeiro",
     neighborhood: "Copacabana",
@@ -181,6 +186,7 @@ export const churches: Church[] = [
   {
     id: "5",
     name: "Assembleia de Deus Madureira",
+    razaoSocial: "Assembleia de Deus Madureira",
     address: "Rua Conde de Bonfim, 800",
     city: "Rio de Janeiro",
     neighborhood: "Tijuca",
@@ -218,6 +224,7 @@ export const churches: Church[] = [
   {
     id: "6",
     name: "Igreja Adventista do Setimo Dia",
+    razaoSocial: "Igreja Adventista do Setimo Dia",
     address: "Rua das Laranjeiras, 120",
     city: "Rio de Janeiro",
     neighborhood: "Laranjeiras",
@@ -245,6 +252,7 @@ export const churches: Church[] = [
   {
     id: "7",
     name: "Comunidade Crista da Graca",
+    razaoSocial: "Comunidade Crista da Graca",
     address: "Av. Brasil, 2500",
     city: "Sao Paulo",
     neighborhood: "Vila Mariana",
@@ -282,6 +290,7 @@ export const churches: Church[] = [
   {
     id: "8",
     name: "Igreja Luterana da Reconciliacao",
+    razaoSocial: "Igreja Luterana da Reconciliacao",
     address: "Rua Voluntarios da Patria, 450",
     city: "Sao Paulo",
     neighborhood: "Santana",

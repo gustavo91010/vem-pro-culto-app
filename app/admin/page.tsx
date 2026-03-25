@@ -191,30 +191,61 @@ export default function AdminPage() {
           </TabsList>
 
           <TabsContent value="churches">
-            <Card>
-              <CardHeader><CardTitle>Igrejas Cadastradas ({churchList.length})</CardTitle></CardHeader>
-              <CardContent className="flex flex-col gap-3">
-                {churchList.map((church) => (
-                  <div key={church.id} className="flex items-center justify-between gap-4 rounded-lg border p-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{church.nome}</h3>
-                        <Badge variant={church.ativo ? "secondary" : "outline"} className={church.ativo ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}>
-                          {church.ativo ? "Ativa" : "Pendente"}
-                        </Badge>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              {/* Coluna Inativas / Pendentes */}
+              <Card className="border-orange-200 bg-orange-50/30">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg text-orange-700">
+                    <Clock className="h-5 w-5" />
+                    Inativas / Pendentes ({churchList.filter(c => !c.ativo).length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
+                  {churchList.filter(c => !c.ativo).map((church) => (
+                    <div key={church.id} className="flex items-center justify-between gap-4 rounded-lg border border-orange-100 bg-background p-4 shadow-sm">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold truncate">{church.nomeFantasia || church.nome || church.razaoSocial}</h3>
+                        <p className="text-xs text-muted-foreground truncate">{church.endereco?.bairro || (church as any).bairro}, {church.endereco?.cidade || (church as any).cidade}</p>
                       </div>
-                      <p className="text-xs text-muted-foreground">{church.bairro}, {church.cidade}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={() => handleToggleStatus(church.id)}>
-                        {church.ativo ? <XCircle className="mr-1 h-4 w-4" /> : <CheckCircle className="mr-1 h-4 w-4" />}
-                        {church.ativo ? "Desativar" : "Aprovar"}
+                      <Button size="sm" onClick={() => handleToggleStatus(church.id)} className="bg-orange-600 hover:bg-orange-700 text-white">
+                        <CheckCircle className="mr-1 h-4 w-4" />
+                        Ativar / Aprovar
                       </Button>
                     </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+                  ))}
+                  {churchList.filter(c => !c.ativo).length === 0 && (
+                    <p className="text-center py-8 text-sm text-muted-foreground italic">Nenhuma igreja inativa ou pendente.</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Coluna Ativas */}
+              <Card className="border-green-200 bg-green-50/30">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg text-green-700">
+                    <CheckCircle className="h-5 w-5" />
+                    Igrejas Ativas ({churchList.filter(c => c.ativo).length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
+                  {churchList.filter(c => c.ativo).map((church) => (
+                    <div key={church.id} className="flex items-center justify-between gap-4 rounded-lg border border-green-100 bg-background p-4 shadow-sm">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold truncate">{church.nomeFantasia || church.nome || church.razaoSocial}</h3>
+                        <p className="text-xs text-muted-foreground truncate">{church.endereco?.bairro || (church as any).bairro}, {church.endereco?.cidade || (church as any).cidade}</p>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => handleToggleStatus(church.id)} className="text-destructive hover:bg-destructive/10 border-destructive/20">
+                        <XCircle className="mr-1 h-4 w-4" />
+                        Desativar
+                      </Button>
+                    </div>
+                  ))}
+                  {churchList.filter(c => c.ativo).length === 0 && (
+                    <p className="text-center py-8 text-sm text-muted-foreground italic">Nenhuma igreja ativa.</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="activities">

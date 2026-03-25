@@ -12,7 +12,13 @@ export default function MapPage() {
   const [churches, setChurches] = useState<IgrejaApi[]>([])
 
   useEffect(() => {
-    listarTodasIgrejas().then(setChurches).catch(console.error)
+    listarTodasIgrejas()
+      .then((data) => {
+        if (data) {
+          setChurches(data.filter((i) => i.ativo))
+        }
+      })
+      .catch(console.error)
   }, [])
 
   return (

@@ -29,17 +29,18 @@ function mapAtividadeToActivity(a: AtividadeApi): Activity & { churchName: strin
 function mapIgrejaToChurch(i: IgrejaApi): ChurchType {
   return {
     id: String(i.id),
-    name: i.nome,
-    address: i.endereco,
-    city: i.cidade,
-    neighborhood: i.bairro,
-    phone: i.telefone,
+    name: i.nomeFantasia || i.nome || i.razaoSocial,
+    razaoSocial: i.razaoSocial,
+    address: (i as any).endereco?.logradouro || i.endereco,
+    city: (i as any).endereco?.cidade || i.cidade,
+    neighborhood: (i as any).endereco?.bairro || i.bairro,
+    phone: (i as any).telefone?.[0]?.numero || i.telefone,
     email: i.email,
-    website: i.site,
-    lat: i.latitude,
-    lng: i.longitude,
+    website: (i as any).redesSociais?.[0]?.url || i.site,
+    lat: (i as any).endereco?.latitude || i.latitude,
+    lng: (i as any).endereco?.longitude || i.longitude,
     description: i.descricao,
-    imageUrl: "/images/churches/default.jpg",
+    imageUrl: i.imagemUrl || "/images/churches/default.jpg",
     activities: [],
   }
 }
@@ -93,7 +94,8 @@ export default function HomePage() {
     listarTodasIgrejas()
       .then((igrejas) => {
         if (igrejas) {
-          setApiChurches(igrejas.map(mapIgrejaToChurch))
+          // Filtra apenas igrejas ativas antes de mapear
+          setApiChurches(igrejas.filter(i => i.ativo).map(mapIgrejaToChurch))
         }
       })
       .catch((err) => {
