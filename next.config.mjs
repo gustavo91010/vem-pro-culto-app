@@ -4,7 +4,7 @@ const nextConfig = {
     return [
       {
         source: '/api/vpc/:path*',
-        destination: 'http://20.246.66.131:8084/:path*',
+        destination: 'http://localhost:8084/:path*',
       },
       {
         source: '/api/auth/:path*',
