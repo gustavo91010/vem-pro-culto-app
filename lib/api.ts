@@ -351,9 +351,11 @@ export async function registerApi(
 
 export interface UsuarioApi {
   id: number;
-  authToken: string;
-  ativo: boolean;
-  // ... outros campos se necessário
+  name?: string | null;
+  email: string;
+  roles: string[];
+  authToken?: string;
+  ativo?: boolean;
 }
 
 export async function getUsuarioLogado(): Promise<UsuarioApi> {

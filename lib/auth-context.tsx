@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react"
 import { type User } from "./mock-data"
 import { loginApi, registerApi, getUsuarioLogado } from "./api"
+import { Role } from "@/lib/enums/role"
 
 interface AuthContextType {
   user: Omit<User, "password"> | null
@@ -10,6 +11,7 @@ interface AuthContextType {
   register: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>
   logout: () => void
   isAdmin: boolean
+  isModerator: boolean
   isLoading: boolean
 }
 
@@ -29,9 +31,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const apiUser = await getUsuarioLogado()
           setUser({
             id: String(apiUser.id),
-            name: "Usuario", 
-            email: "email@igreja.com", 
-            role: "user", 
+            name: apiUser.name || "Usuario",
+            email: apiUser.email || "email@igreja.com",
+            roles: (apiUser.roles || []) as Role[],
           })
         } catch (e) {
           console.error("Sessão expirada ou inválida")
@@ -50,12 +52,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data) {
         // Buscamos apenas campos que de fato podem conter um UUID de acesso
         const tokenValue = data.access_token
-        
+        const roles = (data.roles || []) as Role[]
+        console.log("roles ", roles)
         const userData: Omit<User, "password"> = {
-          id: data.user?.id || data.id || "1",
-          name: data.user?.name || data.nome || "Usuario",
-          email: data.user?.email || data.email || email,
-          role: data.user?.role || data.role || (email.includes("admin") ? "admin" : "user"),
+          id: data.id || "1",
+          name: data.name || data.email.split("@")[0] || "Usuario",
+          email: data.email || "email@email.com",
+          roles: roles
         }
         setUser(userData)
         
@@ -82,13 +85,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = await registerApi(name, email, password)
         if (data) {
           const userData: Omit<User, "password"> = {
-            id: data.user?.id || data.id || String(Date.now()),
-            name: data.user?.name || data.nome || name,
-            email: data.user?.email || data.email || email,
-            role: "user",
+            id: data.id,
+            name: data.name,
+            email: data.email,
+            roles: (data.roles || []) as Role[],
           }
           setUser(userData)
-          const tokenValue = data.token || data.accessToken || data.authToken
+          const tokenValue = data.access_token
           if (tokenValue && String(tokenValue).includes("-")) {
             localStorage.setItem("vpc_token", String(tokenValue))
           }
@@ -110,9 +113,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("vpc_token")
   }, [])
 
+  const isAdmin = !!user?.roles?.some((r) => r === Role.ADMIN || r === Role.MODERATOR)
+  const isModerator = !!user?.roles?.includes(Role.MODERATOR)
+
   return (
     <AuthContext.Provider
-      value={{ user, login, register, logout, isAdmin: user?.role === "admin", isLoading }}
+      value={{ user, login, register, logout, isAdmin, isModerator, isLoading }}
     >
       {children}
     </AuthContext.Provider>

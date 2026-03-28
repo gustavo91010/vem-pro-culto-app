@@ -25,12 +25,14 @@ export interface Church {
   imageUrl: string
 }
 
+import { Role } from "./enums/role"
+
 export interface User {
   id: string
   name: string
   email: string
   password: string
-  role: "admin" | "user"
+  roles: Role[]
 }
 
 export const users: User[] = [
@@ -39,14 +41,14 @@ export const users: User[] = [
     name: "Admin Igreja",
     email: "admin@igrejas.com",
     password: "admin123",
-    role: "admin",
+    roles: [Role.ADMIN],
   },
   {
     id: "2",
     name: "Maria Silva",
     email: "maria@email.com",
     password: "user123",
-    role: "user",
+    roles: [Role.USER],
   },
 ]
 
