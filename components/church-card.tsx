@@ -2,20 +2,25 @@
 
 import { useEffect, useState } from "react"
 import Image from "next/image"
-import Link from "next/link"
-import { MapPin, Clock, ArrowRight } from "lucide-react"
+import { MapPin, Clock, ArrowRight, Heart } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { useAuth } from "@/lib/auth-context"
+import { toast } from "sonner"
 import type { Church } from "@/lib/mock-data"
-import { listarCultosPorIgreja, type AtividadeApi } from "@/lib/api"
+import { listarCultosPorIgreja, vincularIgreja, buscarRelacoesUsuario, type AtividadeApi } from "@/lib/api"
 
 interface ChurchCardProps {
   church: Church
 }
 
 export function ChurchCard({ church }: ChurchCardProps) {
+  const { user } = useAuth()
   const [proximoCulto, setProximoCulto] = useState<AtividadeApi | null>(null)
   const [totalCultos, setTotalCultos] = useState(0)
+  const [isFollowed, setIsFollowed] = useState(false)
+  const [loadingFollow, setLoadingFollow] = useState(false)
 
   useEffect(() => {
     listarCultosPorIgreja(Number(church.id))
@@ -28,10 +33,50 @@ export function ChurchCard({ church }: ChurchCardProps) {
         if (proximo) setProximoCulto(proximo)
       })
       .catch(() => {})
-  }, [church.id])
+
+    if (user) {
+      buscarRelacoesUsuario().then(relations => {
+        setIsFollowed(relations.some(r => r.igrejaId === Number(church.id)))
+      })
+    }
+  }, [church.id, user])
+
+  const handleFollow = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (!user) {
+      toast.error("Faca login para seguir esta igreja")
+      return
+    }
+
+    setLoadingFollow(true)
+    try {
+      await vincularIgreja(Number(church.id))
+      setIsFollowed(true)
+      toast.success("Voce agora segue esta igreja!")
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao seguir igreja")
+    } finally {
+      setLoadingFollow(false)
+    }
+  }
 
   return (
-    <Link href={`/igreja/${encodeURIComponent(church.razaoSocial)}`} className="group block">
+    <div className="relative group">
+      {user && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className={`absolute top-2 right-2 z-10 rounded-full h-8 w-8 bg-black/20 backdrop-blur-sm hover:bg-black/40 ${isFollowed ? 'text-red-500' : 'text-white'}`}
+          onClick={handleFollow}
+          disabled={isFollowed || loadingFollow}
+        >
+          <Heart className={`h-4 w-4 ${isFollowed ? 'fill-current' : ''}`} />
+        </Button>
+      )}
+      <Link href={`/igreja/${encodeURIComponent(church.razaoSocial)}`} className="block">
+...
       <Card className="h-full overflow-hidden border border-border bg-card transition-all duration-200 hover:border-primary/30 hover:shadow-lg">
         {/* Church Image */}
         <div className="relative h-44 w-full overflow-hidden">
@@ -92,5 +137,6 @@ export function ChurchCard({ church }: ChurchCardProps) {
         </CardContent>
       </Card>
     </Link>
+    </div>
   )
 }

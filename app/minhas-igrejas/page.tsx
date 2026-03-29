@@ -27,23 +27,26 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ActivityForm } from "@/components/activity-form"
+import { Shield } from "lucide-react"
+import { Button } from "@/components/ui/button"
+...
 import { useAuth } from "@/lib/auth-context"
 import { 
-  listarMinhasIgrejas, 
+  listarIgrejasDoUsuario, 
+  buscarRelacoesUsuario,
   listarTodasAtividades, 
   registrarAtividade, 
   excluirAtividade,
-  getUsuarioLogado,
   type IgrejaApi,
   type AtividadeApi,
-  type AtividadeDTO
+  type AtividadeDTO,
+  type RelacaoComIgreja
 } from "@/lib/api"
 import { toast } from "sonner"
-
 export default function MinhasIgrejasPage() {
   const { user } = useAuth()
   const [churchList, setChurchList] = useState<IgrejaApi[]>([])
+  const [relations, setRelations] = useState<RelacaoComIgreja[]>([])
   const [activityList, setActivityList] = useState<AtividadeApi[]>([])
   const [isCreatingActivity, setIsCreatingActivity] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -51,11 +54,15 @@ export default function MinhasIgrejasPage() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const usuario = await getUsuarioLogado()
-      const minhasIgrejas = await listarMinhasIgrejas(usuario.id)
-      setChurchList(minhasIgrejas)
+      const [minhasIgrejas, relacoesUsuario, todasAtividades] = await Promise.all([
+        listarIgrejasDoUsuario(),
+        buscarRelacoesUsuario(),
+        listarTodasAtividades()
+      ])
       
-      const todasAtividades = await listarTodasAtividades()
+      setChurchList(minhasIgrejas)
+      setRelations(relacoesUsuario)
+      
       // Filtra atividades que pertencem às igrejas do usuário
       const minhasIgrejasIds = minhasIgrejas.map(i => i.id)
       const minhasAtividades = todasAtividades.filter(a => minhasIgrejasIds.includes(a.igrejaId))
@@ -74,6 +81,14 @@ export default function MinhasIgrejasPage() {
       fetchData()
     }
   }, [user])
+
+  // Helpers to split churches
+  const ownedChurches = churchList.filter(c => 
+    relations.some(r => r.igrejaId === c.id && r.papel === "DONO")
+  )
+  const favoriteChurches = churchList.filter(c => 
+    relations.some(r => r.igrejaId === c.id && (r.papel === "FAVORITO" || r.papel === "SEGUIDOR"))
+  )
 
   if (!user) {
     return (
@@ -148,40 +163,72 @@ export default function MinhasIgrejasPage() {
           </TabsList>
 
           <TabsContent value="churches">
-            <Card className="border-border bg-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg text-foreground">
-                  <Church className="h-5 w-5 text-primary" />
-                  Minhas Igrejas ({churchList.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col gap-3">
-                  {churchList.map((church) => (
-                    <div key={church.id} className="flex items-center justify-between gap-4 rounded-lg border border-border bg-background p-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-foreground truncate">{church.nome}</h3>
-                          {!church.ativo && <Badge variant="outline" className="text-orange-500 border-orange-500">Pendente de Aprovação</Badge>}
-                        </div>
-                        <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-                          <MapPin className="h-3.5 w-3.5" />
-                          <span>{church.bairro}, {church.cidade}</span>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <Card className="border-border bg-card">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg text-foreground">
+                    <Church className="h-5 w-5 text-primary" />
+                    Minhas Igrejas ({ownedChurches.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col gap-3">
+                    {ownedChurches.map((church) => (
+                      <div key={church.id} className="flex items-center justify-between gap-4 rounded-lg border border-border bg-background p-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-foreground truncate">{church.nomeFantasia || church.nome || church.razaoSocial}</h3>
+                            {!church.ativo && <Badge variant="outline" className="text-orange-500 border-orange-500">Pendente</Badge>}
+                          </div>
+                          <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <MapPin className="h-3.5 w-3.5" />
+                            <span>{church.endereco?.bairro || (church as any).bairro}, {church.endereco?.cidade || (church as any).cidade}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                  {churchList.length === 0 && (
-                    <div className="text-center py-8">
-                      <p className="text-muted-foreground">Você ainda não tem igrejas cadastradas.</p>
-                      <Button asChild variant="link" className="mt-2">
-                        <Link href="/registrar-igreja">Cadastrar minha primeira igreja</Link>
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                    ))}
+                    {ownedChurches.length === 0 && (
+                      <div className="text-center py-8">
+                        <p className="text-muted-foreground text-sm">Você ainda não registrou igrejas.</p>
+                        <Button asChild variant="link" size="sm" className="mt-2">
+                          <Link href="/registrar-igreja">Registrar agora</Link>
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-border bg-card">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg text-foreground">
+                    <Shield className="h-5 w-5 text-secondary" />
+                    Igrejas que Sigo ({favoriteChurches.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col gap-3">
+                    {favoriteChurches.map((church) => (
+                      <div key={church.id} className="flex items-center justify-between gap-4 rounded-lg border border-border bg-background p-4">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-foreground truncate">{church.nomeFantasia || church.nome || church.razaoSocial}</h3>
+                          <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <MapPin className="h-3.5 w-3.5" />
+                            <span>{church.endereco?.bairro || (church as any).bairro}, {church.endereco?.cidade || (church as any).cidade}</span>
+                          </div>
+                        </div>
+                        <Button asChild variant="ghost" size="sm">
+                          <Link href={`/igreja/id/${church.id}`}>Ver</Link>
+                        </Button>
+                      </div>
+                    ))}
+                    {favoriteChurches.length === 0 && (
+                      <p className="text-center py-8 text-muted-foreground text-sm">Você não favoritou nenhuma igreja ainda.</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="activities">

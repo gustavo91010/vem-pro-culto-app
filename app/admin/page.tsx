@@ -36,6 +36,7 @@ import { ActivityForm } from "@/components/activity-form"
 import { useAuth } from "@/lib/auth-context"
 import { 
   listarTodasIgrejas, 
+  listarIgrejasDoUsuario,
   listarTodasAtividades, 
   registrarIgreja, 
   registrarAtividade, 
@@ -49,7 +50,7 @@ import {
 import { toast } from "sonner"
 
 export default function AdminPage() {
-  const { user, isAdmin } = useAuth()
+  const { user, isAdmin, isModerator } = useAuth()
   const [churchList, setChurchList] = useState<IgrejaApi[]>([])
   const [activityList, setActivityList] = useState<AtividadeApi[]>([])
   const [isCreatingChurch, setIsCreatingChurch] = useState(false)
@@ -60,7 +61,7 @@ export default function AdminPage() {
     setLoading(true)
     try {
       const [igrejas, atividades] = await Promise.all([
-        listarTodasIgrejas(),
+        isModerator ? listarIgrejasDoUsuario() : listarTodasIgrejas(),
         listarTodasAtividades(),
       ])
       setChurchList(igrejas)
@@ -172,8 +173,12 @@ export default function AdminPage() {
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Painel Administrativo</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Gerencie igrejas e atividades.</p>
+          <h1 className="text-2xl font-bold text-foreground">
+            {isModerator ? "Painel do Moderador" : "Painel Administrativo"}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {isModerator ? "Gerencie todas as igrejas e atividades do sistema." : "Gerencie igrejas e atividades."}
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setIsCreatingActivity(true)}>Nova Atividade</Button>

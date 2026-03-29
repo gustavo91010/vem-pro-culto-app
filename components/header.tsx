@@ -86,7 +86,7 @@ export function Header() {
               )}
             >
               <Shield className="h-4 w-4" />
-              Admin
+              {isModerator ? "Moderador" : "Admin"}
             </Link>
           )}
         </nav>
@@ -186,7 +186,7 @@ export function Header() {
                 )}
               >
                 <Shield className="h-4 w-4" />
-                Admin
+                {isModerator ? "Moderador" : "Admin"}
               </Link>
             )}
           </nav>
