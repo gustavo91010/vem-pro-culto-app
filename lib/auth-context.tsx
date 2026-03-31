@@ -50,9 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const data = await loginApi(email, password)
       if (data) {
-        // Buscamos apenas campos que de fato podem conter um UUID de acesso
-        const tokenValue = data.access_token
+        const tokenValue = data.jwt || data.access_token
         const roles = (data.roles || []) as Role[]
+        console.log(data)
         console.log("roles ", roles)
         const userData: Omit<User, "password"> = {
           id: data.id || "1",
@@ -62,10 +62,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setUser(userData)
         
-        if (tokenValue && String(tokenValue).includes("-")) {
+        if (tokenValue) {
           localStorage.setItem("vpc_token", String(tokenValue))
         } else {
-          console.warn("Login não retornou um UUID válido. Token não salvo.")
+          console.warn("Login não retornou um token válido. Token não salvo.")
         }
         return { success: true }
       }
@@ -91,8 +91,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             roles: (data.roles || []) as Role[],
           }
           setUser(userData)
-          const tokenValue = data.access_token
-          if (tokenValue && String(tokenValue).includes("-")) {
+          const tokenValue = data.jwt || data.access_token
+          if (tokenValue) {
             localStorage.setItem("vpc_token", String(tokenValue))
           }
           return { success: true }
