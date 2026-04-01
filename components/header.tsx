@@ -15,7 +15,7 @@ const navLinks = [
 
 export function Header() {
   const pathname = usePathname()
-  const { user, logout, isAdmin } = useAuth()
+  const { user, logout, isAdmin, isModerator } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (

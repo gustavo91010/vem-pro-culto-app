@@ -118,6 +118,9 @@ export interface IgrejaApi {
   // legados
   cidade?: string;
   bairro?: string;
+  latitude?: number;
+  longitude?: number;
+  site?: string;
 }
 
 export interface UsuarioApi {
@@ -151,6 +154,20 @@ export async function listarTodasAtividades(): Promise<AtividadeApi[]> {
   } catch (error) {
     return [];
   }
+}
+
+export async function buscarAtividadePorId(id: number): Promise<AtividadeApi | null> {
+  try {
+    const data = await fetchApi<any>(API_BASE_URL, `/atividade/id/${id}`);
+    return data?.atividade || data;
+  } catch (error) {
+    return null;
+  }
+}
+
+export async function listarAtividadesPorIgreja(igrejaId: number): Promise<AtividadeApi[]> {
+  const todas = await listarTodasAtividades();
+  return todas.filter((a) => a.igrejaId === igrejaId);
 }
 
 export async function registrarAtividade(atividade: AtividadeDTO): Promise<AtividadeApi> {

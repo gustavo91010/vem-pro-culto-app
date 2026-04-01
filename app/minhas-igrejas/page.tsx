@@ -28,9 +28,8 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Shield } from "lucide-react"
-import { Button } from "@/components/ui/button"
-...
 import { useAuth } from "@/lib/auth-context"
+import { ActivityForm } from "@/components/activity-form"
 import { 
   listarIgrejasDoUsuario, 
   buscarRelacoesUsuario,
