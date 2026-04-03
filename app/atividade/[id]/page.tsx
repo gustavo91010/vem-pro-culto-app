@@ -21,13 +21,13 @@ import { getActivityById, getChurchById as getMockChurchById, type Church as Chu
 import { buscarAtividadePorId, buscarIgrejaPorId, type AtividadeApi, type IgrejaApi } from "@/lib/api"
 
 const categoryImages: Record<string, string> = {
-  evento: "/images/activities/evento.jpg",
-  jovens: "/images/activities/jovens.jpg",
-  estudo: "/images/activities/estudo.jpg",
-  musica: "/images/activities/musica.jpg",
-  social: "/images/activities/social.jpg",
-  saude: "/images/activities/saude.jpg",
-  criancas: "/images/activities/criancas.jpg",
+  evento: "/images/activities/evento.svg",
+  jovens: "/images/activities/jovens.svg",
+  estudo: "/images/activities/estudo.svg",
+  musica: "/images/activities/musica.svg",
+  social: "/images/activities/social.svg",
+  saude: "/images/activities/saude.svg",
+  criancas: "/images/activities/criancas.svg",
 }
 
 function getCategoryImage(category: string): string {
@@ -49,7 +49,7 @@ function mapIgrejaToChurch(i: IgrejaApi): ChurchType {
     lat: (i as any).endereco?.latitude || i.latitude,
     lng: (i as any).endereco?.longitude || i.longitude,
     description: i.descricao,
-    imageUrl: i.imagemUrl || "/images/churches/default.jpg",
+    imageUrl: i.imagemUrl || "/images/churches/default.svg",
     activities: [],
   }
 }

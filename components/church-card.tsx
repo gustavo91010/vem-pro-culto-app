@@ -14,16 +14,37 @@ import { listarCultosPorIgreja, vincularIgreja, buscarRelacoesUsuario, type Ativ
 
 interface ChurchCardProps {
   church: Church
+  isFollowedInitial?: boolean
+  activities?: AtividadeApi[]
 }
 
-export function ChurchCard({ church }: ChurchCardProps) {
+export function ChurchCard({ church, isFollowedInitial, activities }: ChurchCardProps) {
   const { user } = useAuth()
   const [proximoCulto, setProximoCulto] = useState<AtividadeApi | null>(null)
   const [totalCultos, setTotalCultos] = useState(0)
-  const [isFollowed, setIsFollowed] = useState(false)
+  const [isFollowed, setIsFollowed] = useState(isFollowedInitial ?? false)
   const [loadingFollow, setLoadingFollow] = useState(false)
 
   useEffect(() => {
+    if (isFollowedInitial !== undefined) {
+      setIsFollowed(isFollowedInitial)
+    }
+  }, [isFollowedInitial])
+
+  useEffect(() => {
+    // Se recebemos atividades por props, usamos elas para evitar fetch redundante
+    if (activities) {
+      const cultos = activities.filter(a => a.tipo === "CULTO" && a.igrejaId === Number(church.id))
+      setTotalCultos(cultos.length)
+      const now = new Date()
+      const proximo = cultos
+        .filter((c) => new Date(c.horario) >= now)
+        .sort((a, b) => new Date(a.horario).getTime() - new Date(b.horario).getTime())[0]
+      if (proximo) setProximoCulto(proximo)
+      return
+    }
+
+    // Fallback: carregar individualmente se necessario
     listarCultosPorIgreja(Number(church.id))
       .then((cultos) => {
         setTotalCultos(cultos.length)
@@ -34,13 +55,18 @@ export function ChurchCard({ church }: ChurchCardProps) {
         if (proximo) setProximoCulto(proximo)
       })
       .catch(() => {})
+  }, [church.id, activities])
+
+  useEffect(() => {
+    // Se ja sabemos se o usuario segue, nao precisamos buscar de novo
+    if (isFollowedInitial !== undefined) return
 
     if (user) {
       buscarRelacoesUsuario().then(relations => {
         setIsFollowed(relations.some(r => r.igrejaId === Number(church.id)))
       })
     }
-  }, [church.id, user])
+  }, [church.id, user, isFollowedInitial])
 
   const handleFollow = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -76,14 +102,13 @@ export function ChurchCard({ church }: ChurchCardProps) {
           <Heart className={`h-4 w-4 ${isFollowed ? 'fill-current' : ''}`} />
         </Button>
       )}
-      <Link href={`/igreja/${encodeURIComponent(church.razaoSocial)}`} className="block">
-...
+      <Link href={"/igreja/" + encodeURIComponent(church.razaoSocial)} className="block">
       <Card className="h-full overflow-hidden border border-border bg-card transition-all duration-200 hover:border-primary/30 hover:shadow-lg">
         {/* Church Image */}
         <div className="relative h-44 w-full overflow-hidden">
           <Image
             src={church.imageUrl}
-            alt={`Foto da ${church.name}`}
+            alt={"Foto da " + church.name}
             fill
             className="object-cover transition-transform duration-300 group-hover:scale-105"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"

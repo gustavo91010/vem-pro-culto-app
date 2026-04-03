@@ -3,20 +3,21 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
-import { Church, MapPin, Shield, LogIn, LogOut, Menu, X, User, PlusCircle } from "lucide-react"
+import { Church, MapPin, LogIn, LogOut, Menu, X, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { cn } from "@/lib/utils"
 
-const navLinks = [
-  { href: "/", label: "Inicio", icon: Church },
-  { href: "/mapa", label: "Mapa", icon: MapPin },
-]
-
 export function Header() {
   const pathname = usePathname()
-  const { user, logout, isAdmin, isModerator } = useAuth()
+  const { user, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Links base (Inicio sempre primeiro, Mapa sempre ultimo)
+  const baseLinks = [
+    { href: "/", label: "Inicio", icon: Church },
+    { href: "/mapa", label: "Mapa", icon: MapPin },
+  ]
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
@@ -26,29 +27,26 @@ export function Header() {
             <Church className="h-5 w-5 text-primary-foreground" />
           </div>
           <span className="text-lg font-bold tracking-tight text-foreground">
-            Encontre Igrejas
+            Vem Pro Culto
           </span>
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
-          {navLinks.map((link) => {
-            const Icon = link.icon
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                  pathname === link.href
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {link.label}
-              </Link>
-            )
-          })}
+          {/* Link Inicio */}
+          <Link
+            href="/"
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              pathname === "/"
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            <Church className="h-4 w-4" />
+            Inicio
+          </Link>
+
+          {/* Link Minhas Igrejas (No meio) */}
           {user && (
             <Link
               href="/minhas-igrejas"
@@ -63,32 +61,20 @@ export function Header() {
               Minhas Igrejas
             </Link>
           )}
-          {user && (
-            <Link
-              href="/registrar-igreja"
-              className={cn(
-                "flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors text-primary hover:bg-primary/10",
-                pathname === "/registrar-igreja" && "bg-primary/10"
-              )}
-            >
-              <PlusCircle className="h-4 w-4" />
-              Cadastrar Igreja
-            </Link>
-          )}
-          {isAdmin && (
-            <Link
-              href="/admin"
-              className={cn(
-                "flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                pathname === "/admin"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <Shield className="h-4 w-4" />
-              {isModerator ? "Moderador" : "Admin"}
-            </Link>
-          )}
+
+          {/* Link Mapa (Na direita) */}
+          <Link
+            href="/mapa"
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              pathname === "/mapa"
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            <MapPin className="h-4 w-4" />
+            Mapa
+          </Link>
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
@@ -127,25 +113,20 @@ export function Header() {
       {mobileOpen && (
         <div className="border-t border-border bg-card px-4 pb-4 pt-2 md:hidden">
           <nav className="flex flex-col gap-1">
-            {navLinks.map((link) => {
-              const Icon = link.icon
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={cn(
-                    "flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-                    pathname === link.href
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {link.label}
-                </Link>
-              )
-            })}
+            <Link
+              href="/"
+              onClick={() => setMobileOpen(false)}
+              className={cn(
+                "flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+                pathname === "/"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <Church className="h-4 w-4" />
+              Inicio
+            </Link>
+
             {user && (
               <Link
                 href="/minhas-igrejas"
@@ -161,34 +142,20 @@ export function Header() {
                 Minhas Igrejas
               </Link>
             )}
-            {user && (
-              <Link
-                href="/registrar-igreja"
-                onClick={() => setMobileOpen(false)}
-                className={cn(
-                  "flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-colors text-primary hover:bg-primary/10",
-                  pathname === "/registrar-igreja" && "bg-primary/10"
-                )}
-              >
-                <PlusCircle className="h-4 w-4" />
-                Cadastrar Igreja
-              </Link>
-            )}
-            {isAdmin && (
-              <Link
-                href="/admin"
-                onClick={() => setMobileOpen(false)}
-                className={cn(
-                  "flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-                  pathname === "/admin"
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <Shield className="h-4 w-4" />
-                {isModerator ? "Moderador" : "Admin"}
-              </Link>
-            )}
+
+            <Link
+              href="/mapa"
+              onClick={() => setMobileOpen(false)}
+              className={cn(
+                "flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+                pathname === "/mapa"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <MapPin className="h-4 w-4" />
+              Mapa
+            </Link>
           </nav>
 
           <div className="mt-3 border-t border-border pt-3">

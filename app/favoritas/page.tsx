@@ -23,7 +23,7 @@ function mapIgrejaToChurch(i: IgrejaApi): ChurchType {
     lat: (i as any).endereco?.latitude || i.latitude || 0,
     lng: (i as any).endereco?.longitude || i.longitude || 0,
     description: i.descricao,
-    imageUrl: i.imagemUrl || "/images/churches/default.jpg",
+    imageUrl: i.imagemUrl || "/images/churches/default.svg",
     activities: [],
   }
 }

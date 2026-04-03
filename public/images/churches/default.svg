@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" viewBox="0 0 800 400">
+  <rect width="800" height="400" fill="#1e3a5f"/>
+  <g transform="translate(400,180)" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M-5 -15h10"/>
+    <path d="M0 -20v10"/>
+    <path d="M3 15v-6a4 4 0 0 0-6 0v6"/>
+    <path d="M15 -15l7 4.3v18a4 4 0 0 1-4 4h-36a4 4 0 0 1-4-4v-14a2 2 0 0 1 1-1.7L-9 -15"/>
+    <path d="M-9 11.3v-26a2 2 0 0 1 .75-1.56l10-8a2 2 0 0 1 2.5 0l10 8A2 2 0 0 1 15 -14.7v26"/>
+  </g>
+  <text x="400" y="240" text-anchor="middle" fill="#ffffff" font-family="system-ui,sans-serif" font-size="18" opacity="0.7">Igreja</text>
+</svg>

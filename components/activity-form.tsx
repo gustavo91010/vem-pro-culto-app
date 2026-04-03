@@ -25,7 +25,8 @@ interface ActivityFormProps {
 }
 
 export function ActivityForm({ churches, initialChurchId, onSave, onCancel }: ActivityFormProps) {
-  const [igrejaId, setIgrejaId] = useState<string>(initialChurchId?.toString() || "")
+  const singleChurch = churches.length === 1
+  const [igrejaId, setIgrejaId] = useState<string>(initialChurchId?.toString() || (singleChurch ? churches[0].id.toString() : ""))
   const [tipo, setTipo] = useState<AtividadeTipo>("CULTO")
   const [descricao, setDescricao] = useState("")
   const [data, setData] = useState("")
@@ -55,21 +56,23 @@ export function ActivityForm({ churches, initialChurchId, onSave, onCancel }: Ac
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="church">Igreja</Label>
-              <Select value={igrejaId} onValueChange={setIgrejaId} required>
-                <SelectTrigger id="church" className="bg-card border-border">
-                  <SelectValue placeholder="Selecione a igreja" />
-                </SelectTrigger>
-                <SelectContent>
-                  {churches.map((church) => (
-                    <SelectItem key={church.id} value={church.id.toString()}>
-                      {church.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!singleChurch && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="church">Igreja</Label>
+                <Select value={igrejaId} onValueChange={setIgrejaId} required>
+                  <SelectTrigger id="church" className="bg-card border-border">
+                    <SelectValue placeholder="Selecione a igreja" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {churches.map((church) => (
+                      <SelectItem key={church.id} value={church.id.toString()}>
+                        {church.nomeFantasia || church.nome || church.razaoSocial}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="tipo">Tipo de Atividade</Label>

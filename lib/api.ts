@@ -193,9 +193,10 @@ export async function excluirAtividade(igrejaId: number, atividadeId: number): P
 
 // --- Igrejas ---
 
-export async function listarTodasIgrejas(): Promise<IgrejaApi[]> {
+export async function listarTodasIgrejas(incluirInativas = false): Promise<IgrejaApi[]> {
   const token = getAuthToken();
-  const data = await fetchApi<any>(API_BASE_URL, "/igreja/todos", {
+  const path = incluirInativas ? "/igreja/todos" : "/igreja/todos?ativo=true";
+  const data = await fetchApi<any>(API_BASE_URL, path, {
     headers: token ? { Authorization: token } : {},
   });
   return Array.isArray(data) ? data : (data.igrejas || []);

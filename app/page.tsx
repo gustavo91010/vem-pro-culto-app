@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button"
 import { ChurchCard } from "@/components/church-card"
 import { ActivityCard } from "@/components/activity-card"
 import { SearchFilters } from "@/components/search-filters"
-import { listarTodasAtividades, listarTodasIgrejas, type AtividadeApi, type IgrejaApi } from "@/lib/api"
-import { churches as mockChurches } from "@/lib/mock-data"
+import { useAuth } from "@/lib/auth-context"
+import { listarTodasAtividades, listarTodasIgrejas, buscarRelacoesUsuario, type AtividadeApi, type IgrejaApi, type RelacaoComIgreja } from "@/lib/api"
 import type { Activity, Church as ChurchType } from "@/lib/mock-data"
 
 function mapAtividadeToActivity(a: AtividadeApi): Activity & { churchName: string } {
@@ -31,25 +31,28 @@ function mapIgrejaToChurch(i: IgrejaApi): ChurchType {
     id: String(i.id),
     name: i.nomeFantasia || i.nome || i.razaoSocial,
     razaoSocial: i.razaoSocial,
-    address: (i as any).endereco?.logradouro || i.endereco,
-    city: (i as any).endereco?.cidade || i.cidade,
-    neighborhood: (i as any).endereco?.bairro || i.bairro,
+    address: (i as any).endereco?.logradouro || (i.endereco as any)?.logradouro || i.endereco,
+    city: (i as any).endereco?.cidade || (i.endereco as any)?.cidade || i.cidade,
+    neighborhood: (i as any).endereco?.bairro || (i.endereco as any)?.bairro || i.bairro,
     phone: (i as any).telefone?.[0]?.numero || i.telefone,
     email: i.email,
     website: (i as any).redesSociais?.[0]?.url || i.site,
     lat: (i as any).endereco?.latitude || i.latitude,
     lng: (i as any).endereco?.longitude || i.longitude,
     description: i.descricao,
-    imageUrl: i.imagemUrl || "/images/churches/default.jpg",
+    imageUrl: i.imagemUrl || "/images/churches/default.svg",
     activities: [],
   }
 }
 
 export default function HomePage() {
+  const { user } = useAuth()
   const [query, setQuery] = useState("")
   const [category, setCategory] = useState("")
   const [upcomingActivities, setUpcomingActivities] = useState<(Activity & { churchName: string })[]>([])
+  const [allActivities, setAllActivities] = useState<AtividadeApi[]>([])
   const [apiChurches, setApiChurches] = useState<ChurchType[]>([])
+  const [userRelations, setUserRelations] = useState<RelacaoComIgreja[]>([])
 
   const filteredChurches = useMemo(() => {
     let results = apiChurches
@@ -77,8 +80,10 @@ export default function HomePage() {
   }, [query, category, apiChurches])
 
   useEffect(() => {
+    // 1. Carregar Atividades (Uma unica vez para a Home)
     listarTodasAtividades()
       .then((atividades) => {
+        setAllActivities(atividades)
         const now = new Date()
         const mapped = atividades
           .map(mapAtividadeToActivity)
@@ -91,10 +96,10 @@ export default function HomePage() {
         setUpcomingActivities([])
       })
 
+    // 2. Carregar Igrejas
     listarTodasIgrejas()
       .then((igrejas) => {
         if (igrejas) {
-          // Filtra apenas igrejas ativas antes de mapear
           setApiChurches(igrejas.filter(i => i.ativo).map(mapIgrejaToChurch))
         }
       })
@@ -102,7 +107,14 @@ export default function HomePage() {
         console.error("Erro ao buscar igrejas:", err)
         setApiChurches([])
       })
-  }, [])
+
+    // 3. Carregar Relacoes (se logado)
+    if (user) {
+      buscarRelacoesUsuario()
+        .then(setUserRelations)
+        .catch(() => setUserRelations([]))
+    }
+  }, [user])
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -110,7 +122,7 @@ export default function HomePage() {
       <section className="relative mb-10 overflow-hidden rounded-2xl">
         <div className="relative h-64 sm:h-80 lg:h-96">
           <Image
-            src="/images/hero-banner.jpg"
+            src="/images/hero-banner.svg"
             alt="Vista aerea de igrejas na cidade"
             fill
             priority
@@ -164,7 +176,12 @@ export default function HomePage() {
         {filteredChurches.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filteredChurches.map((church) => (
-              <ChurchCard key={church.id} church={church} />
+              <ChurchCard 
+                key={church.id} 
+                church={church} 
+                activities={allActivities}
+                isFollowedInitial={userRelations.some(r => r.igrejaId === Number(church.id))}
+              />
             ))}
           </div>
         ) : (

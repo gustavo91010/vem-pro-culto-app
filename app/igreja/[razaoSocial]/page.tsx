@@ -14,14 +14,39 @@ import {
   Heart,
   ArrowLeft,
   ExternalLink,
+  Plus,
+  Trash2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { ActivityCard } from "@/components/activity-card"
+import { ActivityForm } from "@/components/activity-form"
 import { type Church as ChurchType, type Activity } from "@/lib/mock-data"
-import { listarCultosPorIgreja, listarAtividadesPorIgreja, buscarIgrejaPorRazaoSocial, type AtividadeApi, type IgrejaApi } from "@/lib/api"
+import { useAuth } from "@/lib/auth-context"
+import {
+  listarTodasAtividades,
+  buscarIgrejaPorRazaoSocial,
+  buscarRelacoesUsuario,
+  registrarAtividade,
+  excluirAtividade,
+  type AtividadeApi,
+  type AtividadeDTO,
+  type IgrejaApi,
+} from "@/lib/api"
+import { toast } from "sonner"
 
 function mapAtividadeToActivity(a: AtividadeApi): Activity & { churchName?: string } {
   const horario = new Date(a.horario)
@@ -41,16 +66,16 @@ function mapIgrejaToChurch(i: IgrejaApi): ChurchType {
     id: String(i.id),
     name: i.nomeFantasia || i.nome || i.razaoSocial,
     razaoSocial: i.razaoSocial,
-    address: (i as any).endereco?.logradouro || i.endereco || "",
-    city: (i as any).endereco?.cidade || i.cidade || "",
-    neighborhood: (i as any).endereco?.bairro || i.bairro || "",
+    address: (i as any).endereco?.logradouro || (i.endereco as any)?.logradouro || i.endereco || "",
+    city: (i as any).endereco?.cidade || (i.endereco as any)?.cidade || i.city || "",
+    neighborhood: (i as any).endereco?.bairro || (i.endereco as any)?.bairro || i.neighborhood || "",
     phone: (i as any).telefone?.[0]?.numero || (i as any).telefone || "",
     email: i.email,
     website: (i as any).redesSociais?.[0]?.url || (i as any).site || "",
     lat: (i as any).endereco?.latitude || i.latitude || 0,
     lng: (i as any).endereco?.longitude || i.longitude || 0,
     description: i.descricao,
-    imageUrl: i.imagemUrl || "/images/churches/default.jpg",
+    imageUrl: i.imagemUrl || "/images/churches/default.svg",
     activities: [],
   }
 }
@@ -61,39 +86,71 @@ export default function ChurchProfilePage({
   params: Promise<{ razaoSocial: string }>
 }) {
   const { razaoSocial: encodedRazaoSocial } = use(params)
+  const { user } = useAuth()
   const [church, setChurch] = useState<ChurchType | null>(null)
+  const [igrejaApi, setIgrejaApi] = useState<IgrejaApi | null>(null)
   const [isFavorite, setIsFavorite] = useState(false)
+  const [isOwner, setIsOwner] = useState(false)
   const [cultos, setCultos] = useState<AtividadeApi[]>([])
   const [atividades, setAtividades] = useState<(Activity & { churchName?: string })[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isCreatingActivity, setIsCreatingActivity] = useState(false)
+
+  const fetchActivities = (igrejaId: number) => {
+    // Busca todas uma unica vez e filtra localmente
+    listarTodasAtividades()
+      .then((todas) => {
+        const daIgreja = todas.filter(a => a.igrejaId === igrejaId);
+        
+        // Filtrar cultos futuros
+        const now = new Date()
+        const cultosFiltrados = daIgreja
+          .filter((a) => a.tipo === "CULTO" && new Date(a.horario) >= now)
+          .sort((a, b) => new Date(a.horario).getTime() - new Date(b.horario).getTime())
+        setCultos(cultosFiltrados)
+
+        // Outras atividades
+        const outras = daIgreja
+          .filter((a) => a.tipo !== "CULTO")
+          .map(mapAtividadeToActivity)
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        setAtividades(outras)
+      })
+      .catch((err) => {
+        console.error("Erro ao buscar atividades:", err)
+      })
+  }
 
   useEffect(() => {
     const razaoSocial = decodeURIComponent(encodedRazaoSocial)
-    
+
     buscarIgrejaPorRazaoSocial(razaoSocial)
-      .then((i) => {
+      .then(async (i) => {
         if (i && i.ativo) {
           setChurch(mapIgrejaToChurch(i))
-          
+          setIgrejaApi(i)
+
           const igrejaIdNumerico = i.id
           if (igrejaIdNumerico) {
-            listarCultosPorIgreja(igrejaIdNumerico)
-              .then((c) => {
-                const now = new Date()
-                setCultos(c.filter((culto) => new Date(culto.horario) >= now)
-                  .sort((a, b) => new Date(a.horario).getTime() - new Date(b.horario).getTime()))
-              })
-              .catch(() => {})
+            fetchActivities(igrejaIdNumerico)
+          }
 
-            listarAtividadesPorIgreja(igrejaIdNumerico)
-              .then((a) => {
-                const mapped = a
-                  .filter((at) => at.tipo !== "CULTO")
-                  .map(mapAtividadeToActivity)
-                  .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                setAtividades(mapped)
-              })
-              .catch(() => {})
+          // Verificar se o usuario logado eh DONO desta igreja
+          if (user) {
+            try {
+              const relacoes = await buscarRelacoesUsuario()
+              const ehDono = relacoes.some(
+                (r) => r.igrejaId === i.id && r.papel === "DONO"
+              )
+              setIsOwner(ehDono)
+              
+              const ehFavorito = relacoes.some(
+                (r) => r.igrejaId === i.id && r.papel === "FAVORITO"
+              )
+              setIsFavorite(ehFavorito)
+            } catch {
+              setIsOwner(false)
+            }
           }
         }
       })
@@ -101,7 +158,29 @@ export default function ChurchProfilePage({
         console.error("Erro ao buscar igreja da API:", err)
       })
       .finally(() => setIsLoading(false))
-  }, [encodedRazaoSocial])
+  }, [encodedRazaoSocial, user])
+
+  const handleSaveActivity = async (data: AtividadeDTO) => {
+    try {
+      await registrarAtividade(data)
+      toast.success("Atividade registrada com sucesso!")
+      setIsCreatingActivity(false)
+      if (igrejaApi) fetchActivities(igrejaApi.id)
+    } catch (error: any) {
+      toast.error("Erro ao registrar atividade: " + error.message)
+    }
+  }
+
+  const handleDeleteActivity = async (atividadeId: number) => {
+    if (!igrejaApi) return
+    try {
+      await excluirAtividade(igrejaApi.id, atividadeId)
+      toast.success("Atividade excluida!")
+      fetchActivities(igrejaApi.id)
+    } catch (error: any) {
+      toast.error("Erro ao excluir: " + error.message)
+    }
+  }
 
   if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center">Carregando...</div>
@@ -109,6 +188,18 @@ export default function ChurchProfilePage({
 
   if (!church) {
     notFound()
+  }
+
+  if (isCreatingActivity && igrejaApi) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-8">
+        <ActivityForm
+          churches={[igrejaApi]}
+          onSave={handleSaveActivity}
+          onCancel={() => setIsCreatingActivity(false)}
+        />
+      </div>
+    )
   }
 
   return (
@@ -144,136 +235,201 @@ export default function ChurchProfilePage({
                 {church.address}, {church.neighborhood} - {church.city}
               </span>
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Button
-                variant={isFavorite ? "secondary" : "outline"}
-                size="sm"
-                onClick={() => setIsFavorite(!isFavorite)}
-                className={
-                  isFavorite
-                    ? "bg-secondary text-secondary-foreground"
-                    : "border-white/40 text-white hover:bg-white/15"
-                }
-              >
-                <Heart
-                  className={`mr-1.5 h-4 w-4 ${isFavorite ? "fill-current" : ""}`}
-                />
-                {isFavorite ? "Favoritada" : "Favoritar"}
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="border-white/40 text-white hover:bg-white/15"
-              >
-                <Link href={`/mapa?church=${church.id}`}>
-                  <MapPin className="mr-1.5 h-4 w-4" />
-                  Ver no mapa
-                </Link>
-              </Button>
-            </div>
           </div>
         </div>
       </div>
 
-      {/* Description */}
-      <p className="mb-8 leading-relaxed text-muted-foreground">{church.description}</p>
+      <div className="grid gap-8 lg:grid-cols-3">
+        {/* Left Column: Details */}
+        <div className="lg:col-span-2 flex flex-col gap-8">
+          {/* About */}
+          <section>
+            <h2 className="text-xl font-semibold mb-3">Sobre a Igreja</h2>
+            <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+              {church.description || "Sem descricao disponivel."}
+            </p>
+          </section>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Cultos */}
-        <Card className="lg:col-span-2 border-border bg-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg text-foreground">
-              <Clock className="h-5 w-5 text-primary" />
-              Proximos Cultos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+          <Separator />
+
+          {/* Activities / Cultos */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-secondary" />
+                <h2 className="text-xl font-semibold">Programacao</h2>
+              </div>
+              {isOwner && (
+                <Button size="sm" onClick={() => setIsCreatingActivity(true)}>
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  Nova Atividade
+                </Button>
+              )}
+            </div>
+
             {cultos.length > 0 ? (
-              <div className="flex flex-col gap-2">
-                {cultos.map((culto) => {
-                  const horario = new Date(culto.horario)
-                  return (
-                    <div
-                      key={culto.id}
-                      className="flex items-center justify-between rounded-lg bg-muted px-4 py-2.5"
-                    >
-                      <span className="text-sm font-medium text-foreground">
-                        {culto.descricao}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          {horario.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {horario.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                        </Badge>
+              <div className="grid gap-3 mb-6">
+                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Proximos Cultos</h3>
+                {cultos.map((culto) => (
+                  <Card key={culto.id} className="bg-accent/5 border-accent/20">
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+                          <Clock className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{culto.descricao}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(culto.horario).toLocaleDateString("pt-BR", { weekday: 'long', day: '2-digit', month: 'long' })} as {new Date(culto.horario).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  )
-                })}
+                      {isOwner && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir atividade?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta acao nao pode ser desfeita. Isso removera permanentemente a atividade da programacao.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteActivity(culto.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                Nenhum culto agendado no momento.
-              </p>
+              <p className="text-muted-foreground text-sm italic mb-6">Nenhum culto programado.</p>
             )}
-          </CardContent>
-        </Card>
 
-        {/* Contact Info */}
-        <Card className="border-border bg-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg text-foreground">
-              <Phone className="h-5 w-5 text-primary" />
-              Contato
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-3">
-                <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <span className="text-sm text-foreground">{church.phone}</span>
+            {atividades.length > 0 && (
+              <div className="grid gap-4">
+                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Outras Atividades</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {atividades.map((activity) => (
+                    <div key={activity.id} className="relative group">
+                      <ActivityCard activity={activity} />
+                      {isOwner && (
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full shadow-md bg-white hover:bg-destructive hover:text-white border-none">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Excluir atividade?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Deseja remover "{activity.name}"?
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteActivity(Number(activity.id))} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
-              <Separator />
-              <div className="flex items-center gap-3">
-                <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <span className="text-sm text-foreground break-all">
-                  {church.email}
-                </span>
+            )}
+          </section>
+        </div>
+
+        {/* Right Column: Sidebar */}
+        <div className="flex flex-col gap-6">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Contato</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              {church.phone && (
+                <div className="flex items-center gap-3 text-sm">
+                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <Phone className="h-4 w-4" />
+                  </div>
+                  <span>{church.phone}</span>
+                </div>
+              )}
+              {church.email && (
+                <div className="flex items-center gap-3 text-sm">
+                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <Mail className="h-4 w-4" />
+                  </div>
+                  <span className="truncate">{church.email}</span>
+                </div>
+              )}
+              {church.website && (
+                <div className="flex items-center gap-3 text-sm">
+                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <Globe className="h-4 w-4" />
+                  </div>
+                  <a
+                    href={church.website.startsWith('http') ? church.website : `https://${church.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline truncate inline-flex items-center gap-1"
+                  >
+                    Visitar site
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Localizacao</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="aspect-square w-full rounded-lg bg-muted flex items-center justify-center overflow-hidden border">
+                <Image
+                  src={`https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=400&h=400&auto=format&fit=crop`}
+                  alt="Mapa estatico"
+                  width={400}
+                  height={400}
+                  className="object-cover grayscale opacity-50"
+                />
+                <div className="absolute flex flex-col items-center">
+                  <MapPin className="h-8 w-8 text-primary animate-bounce" />
+                  <Badge variant="secondary" className="mt-2 bg-white/90 backdrop-blur shadow-sm">
+                    {church.neighborhood}
+                  </Badge>
+                </div>
               </div>
-              <Separator />
-              <div className="flex items-center gap-3">
-                <Globe className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <Button variant="outline" className="w-full mt-4" asChild>
                 <a
-                  href={`https://${church.website}`}
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${church.lat},${church.lng}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-primary hover:underline flex items-center gap-1"
                 >
-                  {church.website}
-                  <ExternalLink className="h-3 w-3" />
+                  Como chegar
                 </a>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-
-      {/* Activities (non-CULTO) */}
-      {atividades.length > 0 && (
-        <section className="mt-8">
-          <div className="mb-4 flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-secondary" />
-            <h2 className="text-xl font-semibold text-foreground">Atividades</h2>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {atividades.map((activity) => (
-              <ActivityCard key={activity.id} activity={activity} />
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   )
 }
