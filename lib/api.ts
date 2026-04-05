@@ -33,8 +33,12 @@ async function fetchApi<T>(
       let errorMsg = `API error: ${res.status} ${res.statusText}`;
       try {
         const errorJson = await res.json();
+        console.log("o qu evem:", errorJson)
         errorMsg = errorJson.message || errorJson.error || errorMsg;
-      } catch (e) { }
+        console.log("enta aqui?? ", errorMsg)
+      } catch (e) { 
+
+      }
       throw new Error(errorMsg);
     }
 
@@ -130,6 +134,7 @@ export interface UsuarioApi {
   roles: string[];
   authToken?: string;
   ativo?: boolean;
+  igrejasFavoritas?: number[];
 }
 
 export interface UsuarioUpdate {

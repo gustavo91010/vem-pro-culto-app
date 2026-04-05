@@ -9,7 +9,7 @@ import { ChurchCard } from "@/components/church-card"
 import { ActivityCard } from "@/components/activity-card"
 import { SearchFilters } from "@/components/search-filters"
 import { useAuth } from "@/lib/auth-context"
-import { listarTodasAtividades, listarTodasIgrejas, buscarRelacoesUsuario, type AtividadeApi, type IgrejaApi, type RelacaoComIgreja } from "@/lib/api"
+import { listarTodasAtividades, listarTodasIgrejas, type AtividadeApi, type IgrejaApi, type RelacaoComIgreja } from "@/lib/api"
 import type { Activity, Church as ChurchType } from "@/lib/mock-data"
 
 function mapAtividadeToActivity(a: AtividadeApi): Activity & { churchName: string } {
@@ -52,7 +52,6 @@ export default function HomePage() {
   const [upcomingActivities, setUpcomingActivities] = useState<(Activity & { churchName: string })[]>([])
   const [allActivities, setAllActivities] = useState<AtividadeApi[]>([])
   const [apiChurches, setApiChurches] = useState<ChurchType[]>([])
-  const [userRelations, setUserRelations] = useState<RelacaoComIgreja[]>([])
 
   const filteredChurches = useMemo(() => {
     let results = apiChurches
@@ -108,12 +107,7 @@ export default function HomePage() {
         setApiChurches([])
       })
 
-    // 3. Carregar Relacoes (se logado)
-    if (user) {
-      buscarRelacoesUsuario()
-        .then(setUserRelations)
-        .catch(() => setUserRelations([]))
-    }
+    // 3. Carregar Relacoes (removido para ser carregado apenas em Minhas Igrejas)
   }, [user])
 
   return (
@@ -180,7 +174,6 @@ export default function HomePage() {
                 key={church.id} 
                 church={church} 
                 activities={allActivities}
-                isFollowedInitial={userRelations.some(r => r.igrejaId === Number(church.id))}
               />
             ))}
           </div>

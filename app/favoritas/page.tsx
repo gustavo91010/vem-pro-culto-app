@@ -35,18 +35,15 @@ export default function FavoritasPage() {
 
   useEffect(() => {
     async function loadFavoritas() {
-      if (!user) return
+      if (!user || !user.igrejasFavoritas) return
       
       try {
         setLoading(true)
-        // Por enquanto, como o endpoint de favoritos ainda está no backlog (MVP 02),
-        // vamos simular buscando todas e filtrando localmente se houver alguma marcação.
-        // Ou, para o MVP 01, mostramos uma lista vazia com instrução.
         const todas = await listarTodasIgrejas()
-        
-        // Mock de favoritos (até o banco suportar a tabela de favoritos):
-        // Se a igreja tiver o papel MEMBRO ou DONO vinculado ao user, ou simular por ID
-        setFavoritas([]) // Inicialmente vazio até implementar o toggle de favorito
+        const favs = todas
+          .filter(i => user.igrejasFavoritas?.includes(i.id))
+          .map(mapIgrejaToChurch)
+        setFavoritas(favs)
       } catch (error) {
         console.error("Erro ao carregar favoritas:", error)
       } finally {

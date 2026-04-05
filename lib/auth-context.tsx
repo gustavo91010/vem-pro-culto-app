@@ -34,6 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             name: apiUser.name || "Usuario",
             email: apiUser.email || "email@igreja.com",
             roles: (apiUser.roles || []) as Role[],
+            igrejasFavoritas: apiUser.igrejasFavoritas || [],
           })
         } catch (e) {
           console.error("Sessão expirada ou inválida")
@@ -54,18 +55,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const roles = (data.roles || []) as Role[]
         console.log(data)
         console.log("roles ", roles)
-        const userData: Omit<User, "password"> = {
-          id: data.id || "1",
-          name: data.name || data.email.split("@")[0] || "Usuario",
-          email: data.email || "email@email.com",
-          roles: roles
-        }
-        setUser(userData)
-        
         if (tokenValue) {
           localStorage.setItem("vpc_token", String(tokenValue))
+          
+          // Busca perfil completo (incluindo favoritas) logo após login
+          try {
+            const apiUser = await getUsuarioLogado()
+            const userData: Omit<User, "password"> = {
+              id: String(apiUser.id),
+              name: apiUser.name || data.name || data.email.split("@")[0] || "Usuario",
+              email: apiUser.email || data.email || "email@email.com",
+              roles: (apiUser.roles || roles) as Role[],
+              igrejasFavoritas: apiUser.igrejasFavoritas || [],
+            }
+            setUser(userData)
+          } catch (e) {
+            // Fallback se o /me falhar logo apos o login
+            const userData: Omit<User, "password"> = {
+              id: data.id || "1",
+              name: data.name || data.email.split("@")[0] || "Usuario",
+              email: data.email || "email@email.com",
+              roles: roles,
+              igrejasFavoritas: data.igrejasFavoritas || [],
+            }
+            setUser(userData)
+          }
         } else {
           console.warn("Login não retornou um token válido. Token não salvo.")
+          const userData: Omit<User, "password"> = {
+            id: data.id || "1",
+            name: data.name || data.email.split("@")[0] || "Usuario",
+            email: data.email || "email@email.com",
+            roles: roles,
+            igrejasFavoritas: data.igrejasFavoritas || [],
+          }
+          setUser(userData)
         }
         return { success: true }
       }
@@ -91,7 +115,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             roles: (data.roles || []) as Role[],
           }
           setUser(userData)
-          const tokenValue = data.jwt || data.access_token
+          // const tokenValue = data.jwt || data.access_token
+          const tokenValue = data.jwt 
           if (tokenValue) {
             localStorage.setItem("vpc_token", String(tokenValue))
           }

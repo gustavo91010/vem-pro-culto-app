@@ -39,7 +39,6 @@ import { useAuth } from "@/lib/auth-context"
 import {
   listarTodasAtividades,
   buscarIgrejaPorRazaoSocial,
-  buscarRelacoesUsuario,
   registrarAtividade,
   excluirAtividade,
   type AtividadeApi,
@@ -135,23 +134,7 @@ export default function ChurchProfilePage({
             fetchActivities(igrejaIdNumerico)
           }
 
-          // Verificar se o usuario logado eh DONO desta igreja
-          if (user) {
-            try {
-              const relacoes = await buscarRelacoesUsuario()
-              const ehDono = relacoes.some(
-                (r) => r.igrejaId === i.id && r.papel === "DONO"
-              )
-              setIsOwner(ehDono)
-              
-              const ehFavorito = relacoes.some(
-                (r) => r.igrejaId === i.id && r.papel === "FAVORITO"
-              )
-              setIsFavorite(ehFavorito)
-            } catch {
-              setIsOwner(false)
-            }
-          }
+          // Verificar se o usuario logado eh DONO desta igreja (removido para ser carregado apenas em Minhas Igrejas)
         }
       })
       .catch((err) => {

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
 import type { Church } from "@/lib/mock-data"
-import { listarCultosPorIgreja, vincularIgreja, buscarRelacoesUsuario, type AtividadeApi } from "@/lib/api"
+import { listarCultosPorIgreja, vincularIgreja, type AtividadeApi } from "@/lib/api"
 
 interface ChurchCardProps {
   church: Church
@@ -58,15 +58,14 @@ export function ChurchCard({ church, isFollowedInitial, activities }: ChurchCard
   }, [church.id, activities])
 
   useEffect(() => {
-    // Se ja sabemos se o usuario segue, nao precisamos buscar de novo
-    if (isFollowedInitial !== undefined) return
-
-    if (user) {
-      buscarRelacoesUsuario().then(relations => {
-        setIsFollowed(relations.some(r => r.igrejaId === Number(church.id)))
-      })
+    // Se ja sabemos se o usuario segue (passado via props), usamos esse valor
+    if (isFollowedInitial !== undefined) {
+      setIsFollowed(isFollowedInitial)
+    } else if (user?.igrejasFavoritas) {
+      // Caso contrario, verificamos na lista global do usuario (vinda do /usuarios/me)
+      setIsFollowed(user.igrejasFavoritas.includes(Number(church.id)))
     }
-  }, [church.id, user, isFollowedInitial])
+  }, [isFollowedInitial, user?.igrejasFavoritas, church.id])
 
   const handleFollow = async (e: React.MouseEvent) => {
     e.preventDefault()
