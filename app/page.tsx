@@ -69,14 +69,14 @@ export default function HomePage() {
 
     if (category) {
       results = results.filter((c) =>
-        c.activities?.some(
-          (a) => a.category.toLowerCase() === category.toLowerCase()
+        allActivities.some(
+          (a) => a.igrejaId === Number(c.id) && a.tipo === category
         )
       )
     }
 
     return results
-  }, [query, category, apiChurches])
+  }, [query, category, apiChurches, allActivities])
 
   useEffect(() => {
     // 1. Carregar Atividades (Uma unica vez para a Home)
@@ -106,9 +106,7 @@ export default function HomePage() {
         console.error("Erro ao buscar igrejas:", err)
         setApiChurches([])
       })
-
-    // 3. Carregar Relacoes (removido para ser carregado apenas em Minhas Igrejas)
-  }, [user])
+  }, [user]) // Adicionado 'user' de volta para reagir a login/logout
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">

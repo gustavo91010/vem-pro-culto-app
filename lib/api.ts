@@ -228,11 +228,16 @@ export async function registrarIgreja(igreja: IgrejaRequest): Promise<IgrejaApi>
   });
 }
 
-export async function vincularIgreja(id: number): Promise<void> {
+/**
+ * Vincula ou desvincula uma igreja ao usuário logado (Favorito/Seguir).
+ * @param id ID da igreja
+ * @returns true se o usuário passou a seguir, false se deixou de seguir.
+ */
+export async function vincularIgreja(id: number): Promise<boolean> {
   const token = getAuthToken();
   if (!token) throw new Error("Usuário não autenticado");
 
-  await fetchApi<void>(API_BASE_URL, `/igreja/vincular/${id}`, {
+  return fetchApi<boolean>(API_BASE_URL, `/igreja/atualizar-vinculo/${id}`, {
     method: "POST",
     headers: { Authorization: token },
   });
@@ -258,9 +263,12 @@ export async function buscarIgrejaPorId(id: number): Promise<IgrejaApi | null> {
 }
 
 export async function buscarIgrejaPorRazaoSocial(razaoSocial: string): Promise<IgrejaApi | null> {
+  const token = getAuthToken();
   try {
     const encodedRazao = encodeURIComponent(razaoSocial);
-    const data = await fetchApi<any>(API_BASE_URL, `/igreja/razao-social/${encodedRazao}`);
+    const data = await fetchApi<any>(API_BASE_URL, `/igreja/razao-social/${encodedRazao}`, {
+      headers: token ? { Authorization: token } : {},
+    });
     return data?.igreja || data;
   } catch (error) {
     return null;

@@ -19,17 +19,13 @@ interface ChurchCardProps {
 }
 
 export function ChurchCard({ church, isFollowedInitial, activities }: ChurchCardProps) {
-  const { user } = useAuth()
+  const { user, refreshUserData } = useAuth()
   const [proximoCulto, setProximoCulto] = useState<AtividadeApi | null>(null)
   const [totalCultos, setTotalCultos] = useState(0)
-  const [isFollowed, setIsFollowed] = useState(isFollowedInitial ?? false)
   const [loadingFollow, setLoadingFollow] = useState(false)
 
-  useEffect(() => {
-    if (isFollowedInitial !== undefined) {
-      setIsFollowed(isFollowedInitial)
-    }
-  }, [isFollowedInitial])
+  // Reatividade direta: se o ID está na lista do usuário, está seguido.
+  const isFollowed = user?.igrejasFavoritas?.includes(Number(church.id)) ?? isFollowedInitial ?? false
 
   useEffect(() => {
     // Se recebemos atividades por props, usamos elas para evitar fetch redundante
@@ -57,16 +53,6 @@ export function ChurchCard({ church, isFollowedInitial, activities }: ChurchCard
       .catch(() => {})
   }, [church.id, activities])
 
-  useEffect(() => {
-    // Se ja sabemos se o usuario segue (passado via props), usamos esse valor
-    if (isFollowedInitial !== undefined) {
-      setIsFollowed(isFollowedInitial)
-    } else if (user?.igrejasFavoritas) {
-      // Caso contrario, verificamos na lista global do usuario (vinda do /usuarios/me)
-      setIsFollowed(user.igrejasFavoritas.includes(Number(church.id)))
-    }
-  }, [isFollowedInitial, user?.igrejasFavoritas, church.id])
-
   const handleFollow = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -78,11 +64,18 @@ export function ChurchCard({ church, isFollowedInitial, activities }: ChurchCard
 
     setLoadingFollow(true)
     try {
-      await vincularIgreja(Number(church.id))
-      setIsFollowed(true)
-      toast.success("Voce agora segue esta igreja!")
+      const seguiu = await vincularIgreja(Number(church.id))
+      
+      if (seguiu) {
+        toast.success("Voce agora segue esta igreja!")
+      } else {
+        toast.success("Voce deixou de seguir esta igreja.")
+      }
+      
+      // Atualiza lista global de favoritas (o card vai reagir automaticamente a mudanca no useAuth)
+      await refreshUserData()
     } catch (error: any) {
-      toast.error(error.message || "Erro ao seguir igreja")
+      toast.error(error.message || "Erro ao atualizar favorito")
     } finally {
       setLoadingFollow(false)
     }
@@ -96,7 +89,7 @@ export function ChurchCard({ church, isFollowedInitial, activities }: ChurchCard
           size="icon"
           className={`absolute top-2 right-2 z-10 rounded-full h-8 w-8 bg-black/20 backdrop-blur-sm hover:bg-black/40 ${isFollowed ? 'text-red-500' : 'text-white'}`}
           onClick={handleFollow}
-          disabled={isFollowed || loadingFollow}
+          disabled={loadingFollow}
         >
           <Heart className={`h-4 w-4 ${isFollowed ? 'fill-current' : ''}`} />
         </Button>

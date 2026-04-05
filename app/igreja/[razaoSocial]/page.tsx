@@ -5,6 +5,11 @@ import Image from "next/image"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert"
+import {
   MapPin,
   Phone,
   Mail,
@@ -16,6 +21,7 @@ import {
   ExternalLink,
   Plus,
   Trash2,
+  AlertTriangle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -41,6 +47,7 @@ import {
   buscarIgrejaPorRazaoSocial,
   registrarAtividade,
   excluirAtividade,
+  vincularIgreja,
   type AtividadeApi,
   type AtividadeDTO,
   type IgrejaApi,
@@ -85,15 +92,18 @@ export default function ChurchProfilePage({
   params: Promise<{ razaoSocial: string }>
 }) {
   const { razaoSocial: encodedRazaoSocial } = use(params)
-  const { user } = useAuth()
+  const { user, refreshUserData } = useAuth()
   const [church, setChurch] = useState<ChurchType | null>(null)
   const [igrejaApi, setIgrejaApi] = useState<IgrejaApi | null>(null)
-  const [isFavorite, setIsFavorite] = useState(false)
   const [isOwner, setIsOwner] = useState(false)
   const [cultos, setCultos] = useState<AtividadeApi[]>([])
   const [atividades, setAtividades] = useState<(Activity & { churchName?: string })[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCreatingActivity, setIsCreatingActivity] = useState(false)
+  const [loadingFollow, setLoadingFollow] = useState(false)
+
+  // Reatividade direta: verifica se o ID da igreja está nas favoritas do usuário logado
+  const isFavorite = !!igrejaApi && (user?.igrejasFavoritas?.includes(igrejaApi.id) ?? false)
 
   const fetchActivities = (igrejaId: number) => {
     // Busca todas uma unica vez e filtra localmente
@@ -125,16 +135,14 @@ export default function ChurchProfilePage({
 
     buscarIgrejaPorRazaoSocial(razaoSocial)
       .then(async (i) => {
-        if (i && i.ativo) {
+        if (i) {
           setChurch(mapIgrejaToChurch(i))
           setIgrejaApi(i)
-
+          
           const igrejaIdNumerico = i.id
           if (igrejaIdNumerico) {
             fetchActivities(igrejaIdNumerico)
           }
-
-          // Verificar se o usuario logado eh DONO desta igreja (removido para ser carregado apenas em Minhas Igrejas)
         }
       })
       .catch((err) => {
@@ -142,6 +150,32 @@ export default function ChurchProfilePage({
       })
       .finally(() => setIsLoading(false))
   }, [encodedRazaoSocial, user])
+
+  const handleFollow = async () => {
+    if (!user) {
+      toast.error("Faca login para seguir esta igreja")
+      return
+    }
+    if (!igrejaApi) return
+
+    setLoadingFollow(true)
+    try {
+      const seguiu = await vincularIgreja(igrejaApi.id)
+      
+      if (seguiu) {
+        toast.success("Voce agora segue esta igreja!")
+      } else {
+        toast.success("Voce deixou de seguir esta igreja.")
+      }
+      
+      // Atualiza lista global de favoritas
+      await refreshUserData()
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao atualizar favorito")
+    } finally {
+      setLoadingFollow(false)
+    }
+  }
 
   const handleSaveActivity = async (data: AtividadeDTO) => {
     try {
@@ -196,6 +230,16 @@ export default function ChurchProfilePage({
         Voltar para lista
       </Link>
 
+      {igrejaApi && !igrejaApi.ativo && (
+        <Alert variant="destructive" className="mb-6 bg-destructive/10 text-destructive border-destructive/20">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Igreja Desativada</AlertTitle>
+          <AlertDescription>
+            Esta igreja esta desativada e nao aparece nas buscas publicas. Apenas voce pode ver esta pagina.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Hero with Image */}
       <div className="relative mb-8 overflow-hidden rounded-xl">
         <div className="relative h-56 sm:h-72 lg:h-80">
@@ -212,11 +256,23 @@ export default function ChurchProfilePage({
             <h1 className="text-2xl font-bold text-white sm:text-3xl text-balance drop-shadow-lg">
               {church.name}
             </h1>
-            <div className="mt-2 flex items-start gap-2 text-white/80">
-              <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
-              <span className="text-sm sm:text-base drop-shadow">
-                {church.address}, {church.neighborhood} - {church.city}
-              </span>
+            <div className="mt-2 flex items-center justify-between">
+              <div className="flex items-start gap-2 text-white/80">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+                <span className="text-sm sm:text-base drop-shadow">
+                  {church.address}, {church.neighborhood} - {church.city}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`ml-4 rounded-full h-10 px-4 bg-black/20 backdrop-blur-sm hover:bg-black/40 border border-white/10 ${isFavorite ? 'text-red-500' : 'text-white'}`}
+                onClick={handleFollow}
+                disabled={loadingFollow}
+              >
+                <Heart className={`h-5 w-5 mr-2 ${isFavorite ? 'fill-current' : ''}`} />
+                {isFavorite ? 'Seguindo' : 'Seguir'}
+              </Button>
             </div>
           </div>
         </div>

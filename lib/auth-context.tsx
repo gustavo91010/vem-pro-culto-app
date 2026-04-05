@@ -10,6 +10,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   register: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>
   logout: () => void
+  refreshUserData: () => Promise<void>
   isAdmin: boolean
   isModerator: boolean
   isLoading: boolean
@@ -21,30 +22,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Omit<User, "password"> | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  const refreshUserData = useCallback(async () => {
+    const token = localStorage.getItem("vpc_token")
+    if (!token) return
+
+    try {
+      const apiUser = await getUsuarioLogado()
+      setUser({
+        id: String(apiUser.id),
+        name: apiUser.name || "Usuario",
+        email: apiUser.email || "email@igreja.com",
+        roles: (apiUser.roles || []) as Role[],
+        igrejasFavoritas: apiUser.igrejasFavoritas || [],
+      })
+    } catch (e) {
+      console.error("Sessão expirada ou erro ao carregar usuário")
+      // Se der erro 401 ou similar, limpamos o token para nao ficar tentando
+      if (token) localStorage.removeItem("vpc_token")
+    }
+  }, [])
+
   // Carrega o usuário do token ao iniciar (Refresh da página)
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem("vpc_token")
-      // Só tenta inicializar se o token parecer um UUID (contém hífen) ou for longo o suficiente
-      if (token && token.includes("-")) {
-        try {
-          const apiUser = await getUsuarioLogado()
-          setUser({
-            id: String(apiUser.id),
-            name: apiUser.name || "Usuario",
-            email: apiUser.email || "email@igreja.com",
-            roles: (apiUser.roles || []) as Role[],
-            igrejasFavoritas: apiUser.igrejasFavoritas || [],
-          })
-        } catch (e) {
-          console.error("Sessão expirada ou inválida")
-          localStorage.removeItem("vpc_token")
-        }
+      if (token) {
+        await refreshUserData()
       }
       setIsLoading(false)
     }
     initAuth()
-  }, [])
+  }, [refreshUserData])
 
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true)
@@ -143,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, register, logout, isAdmin, isModerator, isLoading }}
+      value={{ user, login, register, logout, refreshUserData, isAdmin, isModerator, isLoading }}
     >
       {children}
     </AuthContext.Provider>

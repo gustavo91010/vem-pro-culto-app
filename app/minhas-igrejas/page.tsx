@@ -102,11 +102,8 @@ export default function MinhasIgrejasPage() {
   const ownedChurches = churches.filter(c => ownedIds.has(c.id))
   const favoriteChurches = churches.filter(c => favoriteIds.has(c.id))
 
-  // Moderador: igrejas que nao estao nas outras colunas (sem relacao direta)
-  const knownIds = new Set([...ownedIds, ...favoriteIds])
-  const moderatorChurches = isModerator
-    ? churches.filter(c => !knownIds.has(c.id))
-    : []
+  // Moderador: Sempre vê todas as igrejas na sua coluna, sem filtros de "conhecidas"
+  const moderatorChurches = isModerator ? churches : []
 
   const hasOwned = ownedChurches.length > 0
   const hasFavorites = favoriteChurches.length > 0
