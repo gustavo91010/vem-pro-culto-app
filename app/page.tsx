@@ -79,7 +79,7 @@ export default function HomePage() {
   }, [query, category, apiChurches, allActivities])
 
   useEffect(() => {
-    // 1. Carregar Atividades (Uma unica vez para a Home)
+    // 1. Carregar Atividades
     listarTodasAtividades()
       .then((atividades) => {
         setAllActivities(atividades)
@@ -106,7 +106,7 @@ export default function HomePage() {
         console.error("Erro ao buscar igrejas:", err)
         setApiChurches([])
       })
-  }, [user]) // Adicionado 'user' de volta para reagir a login/logout
+  }, []) // Removido 'user' das dependencias para carregar sempre
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">

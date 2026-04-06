@@ -27,18 +27,27 @@ async function fetchApi<T>(
       },
     });
 
-    console.log(`[fetchApi] Resposta recebida de ${url}: status ${res.status}`);
-
     if (!res.ok) {
-      let errorMsg = `API error: ${res.status} ${res.statusText}`;
+      let errorMsg = `Erro ${res.status}: ${res.statusText}`;
+      
       try {
-        const errorJson = await res.json();
-        console.log("o qu evem:", errorJson)
-        errorMsg = errorJson.message || errorJson.error || errorMsg;
-        console.log("enta aqui?? ", errorMsg)
-      } catch (e) { 
-
+        // Lemos como texto primeiro para garantir que pegamos qualquer resposta do corpo
+        const responseText = await res.text();
+        
+        try {
+          // Tentamos converter para JSON se for possível
+          const errorJson = JSON.parse(responseText);
+          // Priorizamos chaves comuns de erro em Spring/Express/etc
+          errorMsg = errorJson.message || errorJson.error || errorJson.details || responseText || errorMsg;
+        } catch (e) {
+          // Se não for JSON, usamos o texto puro se ele existir
+          if (responseText) errorMsg = responseText;
+        }
+      } catch (e) {
+        // Fallback para a mensagem de status se falhar ao ler o corpo
       }
+      
+      console.error(`[fetchApi] Erro na resposta: ${errorMsg}`);
       throw new Error(errorMsg);
     }
 
@@ -181,6 +190,17 @@ export async function registrarAtividade(atividade: AtividadeDTO): Promise<Ativi
 
   return fetchApi<AtividadeApi>(API_BASE_URL, "/atividade", {
     method: "POST",
+    headers: { Authorization: token },
+    body: JSON.stringify(atividade),
+  });
+}
+
+export async function atualizarAtividade(id: number, atividade: AtividadeDTO): Promise<AtividadeApi> {
+  const token = getAuthToken();
+  if (!token) throw new Error("Usuário não autenticado");
+
+  return fetchApi<AtividadeApi>(API_BASE_URL, `/atividade/${id}`, {
+    method: "PUT",
     headers: { Authorization: token },
     body: JSON.stringify(atividade),
   });

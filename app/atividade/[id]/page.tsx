@@ -19,6 +19,8 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { getActivityById, getChurchById as getMockChurchById, type Church as ChurchType } from "@/lib/mock-data"
 import { buscarAtividadePorId, buscarIgrejaPorId, type AtividadeApi, type IgrejaApi } from "@/lib/api"
+import { useAuth } from "@/lib/auth-context"
+import { toast } from "sonner"
 
 const categoryImages: Record<string, string> = {
   evento: "/images/activities/evento.svg",
@@ -60,12 +62,17 @@ export default function ActivityDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = use(params)
+  const { user } = useAuth()
   const [isParticipating, setIsParticipating] = useState(false)
   const [apiData, setApiData] = useState<AtividadeApi | null>(null)
   const [church, setChurch] = useState<ChurchType | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Verifica participacao local
+    const agenda = JSON.parse(localStorage.getItem("vpc_agenda") || "[]")
+    setIsParticipating(agenda.some((a: any) => a.id === id))
+
     buscarAtividadePorId(Number(id))
       .then((data) => {
         setApiData(data)
@@ -103,6 +110,39 @@ export default function ActivityDetailPage({
     notFound()
   }
 
+  const handleParticipation = () => {
+    if (!user) {
+      toast.error("Faca login para participar das atividades")
+      return
+    }
+
+    const newStatus = !isParticipating
+    setIsParticipating(newStatus)
+    
+    const agenda = JSON.parse(localStorage.getItem("vpc_agenda") || "[]")
+    
+    if (newStatus) {
+      // Adiciona a agenda local
+      const item = {
+        id: String(apiData.id),
+        name: apiData.descricao,
+        date: apiData.horario.split("T")[0],
+        time: new Date(apiData.horario).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+        category: apiData.tipo,
+        churchName: apiData.nomeIgreja,
+        igrejaId: apiData.igrejaId
+      }
+      agenda.push(item)
+    } else {
+      // Remove da agenda local
+      const filtered = agenda.filter((a: any) => a.id !== id)
+      localStorage.setItem("vpc_agenda", JSON.stringify(filtered))
+      return
+    }
+    
+    localStorage.setItem("vpc_agenda", JSON.stringify(agenda))
+  }
+
   const activity = {
     id: String(apiData.id),
     churchId: String(apiData.igrejaId),
@@ -128,35 +168,24 @@ export default function ActivityDetailPage({
   })
 
   const handleAddToCalendar = () => {
+    if (!activity) return
+
+    // Formata datas para o Google Calendar (YYYYMMDDTHHmmSSZ)
     const startDate = new Date(`${activity.date}T${activity.time}:00`)
-    const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000)
+    const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000) // +2 horas por padrão
 
-    const formatICS = (d: Date) =>
-      d
-        .toISOString()
-        .replace(/[-:]/g, "")
-        .replace(/\.\d{3}/, "")
+    const formatGCalDate = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z"
 
-    const icsContent = [
-      "BEGIN:VCALENDAR",
-      "VERSION:2.0",
-      "BEGIN:VEVENT",
-      `DTSTART:${formatICS(startDate)}`,
-      `DTEND:${formatICS(endDate)}`,
-      `SUMMARY:${activity.name}`,
-      `DESCRIPTION:${activity.description}`,
-      `LOCATION:${finalChurch ? `${finalChurch.address}, ${finalChurch.neighborhood} - ${finalChurch.city}` : ""}`,
-      "END:VEVENT",
-      "END:VCALENDAR",
-    ].join("\n")
+    const gCalUrl = new URL("https://www.google.com/calendar/render")
+    gCalUrl.searchParams.append("action", "TEMPLATE")
+    gCalUrl.searchParams.append("text", activity.name)
+    gCalUrl.searchParams.append("details", activity.description)
+    if (finalChurch) {
+      gCalUrl.searchParams.append("location", `${finalChurch.address}, ${finalChurch.neighborhood} - ${finalChurch.city}`)
+    }
+    gCalUrl.searchParams.append("dates", `${formatGCalDate(startDate)}/${formatGCalDate(endDate)}`)
 
-    const blob = new Blob([icsContent], { type: "text/calendar" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `${activity.name}.ics`
-    a.click()
-    URL.revokeObjectURL(url)
+    window.open(gCalUrl.toString(), "_blank")
   }
 
   return (
@@ -253,24 +282,35 @@ export default function ActivityDetailPage({
           </div>
 
           {/* Actions */}
-          <div className="flex flex-wrap gap-3 pt-2">
-            <Button
-              onClick={() => setIsParticipating(!isParticipating)}
-              variant={isParticipating ? "secondary" : "default"}
-              className={
-                isParticipating
-                  ? "bg-accent text-accent-foreground hover:bg-accent/90"
-                  : ""
-              }
-            >
-              <UserPlus className="mr-2 h-4 w-4" />
-              {isParticipating ? "Participando" : "Participar"}
-            </Button>
-            <Button variant="outline" onClick={handleAddToCalendar}>
-              <CalendarPlus className="mr-2 h-4 w-4" />
-              Adicionar ao calendario
-            </Button>
-          </div>
+          {user ? (
+            <div className="flex flex-wrap gap-3 pt-2">
+              <Button
+                onClick={handleParticipation}
+                variant={isParticipating ? "secondary" : "default"}
+                className={
+                  isParticipating
+                    ? "bg-accent text-accent-foreground hover:bg-accent/90"
+                    : ""
+                }
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                {isParticipating ? "Participando" : "Participar"}
+              </Button>
+              <Button variant="outline" onClick={handleAddToCalendar}>
+                <CalendarPlus className="mr-2 h-4 w-4" />
+                Adicionar ao calendario
+              </Button>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-border bg-accent/5 p-6 text-center">
+              <p className="text-sm text-muted-foreground mb-4">
+                Faca login para participar desta atividade e adicionar ao seu calendario.
+              </p>
+              <Button asChild size="sm">
+                <Link href="/login">Fazer Login</Link>
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

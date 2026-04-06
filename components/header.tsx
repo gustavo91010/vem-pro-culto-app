@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
-import { Church, MapPin, LogIn, LogOut, Menu, X, User } from "lucide-react"
+import { Church, MapPin, LogIn, LogOut, Menu, X, User, CalendarDays } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { cn } from "@/lib/utils"
@@ -46,20 +46,33 @@ export function Header() {
             Inicio
           </Link>
 
-          {/* Link Minhas Igrejas (No meio) */}
           {user && (
-            <Link
-              href="/minhas-igrejas"
-              className={cn(
-                "flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                pathname === "/minhas-igrejas"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <Church className="h-4 w-4" />
-              Minhas Igrejas
-            </Link>
+            <>
+              <Link
+                href="/minhas-igrejas"
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  pathname === "/minhas-igrejas"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <Church className="h-4 w-4" />
+                Minhas Igrejas
+              </Link>
+              <Link
+                href="/agenda"
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  pathname === "/agenda"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <CalendarDays className="h-4 w-4" />
+                Minha Agenda
+              </Link>
+            </>
           )}
 
           {/* Link Mapa (Na direita) */}
@@ -128,19 +141,34 @@ export function Header() {
             </Link>
 
             {user && (
-              <Link
-                href="/minhas-igrejas"
-                onClick={() => setMobileOpen(false)}
-                className={cn(
-                  "flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-                  pathname === "/minhas-igrejas"
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <Church className="h-4 w-4" />
-                Minhas Igrejas
-              </Link>
+              <>
+                <Link
+                  href="/minhas-igrejas"
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    "flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+                    pathname === "/minhas-igrejas"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <Church className="h-4 w-4" />
+                  Minhas Igrejas
+                </Link>
+                <Link
+                  href="/agenda"
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    "flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+                    pathname === "/agenda"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <CalendarDays className="h-4 w-4" />
+                  Minha Agenda
+                </Link>
+              </>
             )}
 
             <Link

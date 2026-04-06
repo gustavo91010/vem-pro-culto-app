@@ -21,7 +21,9 @@ import {
   ExternalLink,
   Plus,
   Trash2,
+  Pencil,
   AlertTriangle,
+  MessageCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -46,8 +48,10 @@ import {
   listarTodasAtividades,
   buscarIgrejaPorRazaoSocial,
   registrarAtividade,
+  atualizarAtividade,
   excluirAtividade,
   vincularIgreja,
+  buscarRelacoesUsuario,
   type AtividadeApi,
   type AtividadeDTO,
   type IgrejaApi,
@@ -92,14 +96,15 @@ export default function ChurchProfilePage({
   params: Promise<{ razaoSocial: string }>
 }) {
   const { razaoSocial: encodedRazaoSocial } = use(params)
-  const { user, refreshUserData } = useAuth()
+  const { user, refreshUserData, isModerator } = useAuth()
   const [church, setChurch] = useState<ChurchType | null>(null)
   const [igrejaApi, setIgrejaApi] = useState<IgrejaApi | null>(null)
   const [isOwner, setIsOwner] = useState(false)
   const [cultos, setCultos] = useState<AtividadeApi[]>([])
-  const [atividades, setAtividades] = useState<(Activity & { churchName?: string })[]>([])
+  const [atividades, setAtividades] = useState<AtividadeApi[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCreatingActivity, setIsCreatingActivity] = useState(false)
+  const [editingActivity, setEditingActivity] = useState<AtividadeApi | null>(null)
   const [loadingFollow, setLoadingFollow] = useState(false)
 
   // Reatividade direta: verifica se o ID da igreja está nas favoritas do usuário logado
@@ -121,8 +126,7 @@ export default function ChurchProfilePage({
         // Outras atividades
         const outras = daIgreja
           .filter((a) => a.tipo !== "CULTO")
-          .map(mapAtividadeToActivity)
-          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+          .sort((a, b) => new Date(a.horario).getTime() - new Date(b.horario).getTime())
         setAtividades(outras)
       })
       .catch((err) => {
@@ -142,6 +146,16 @@ export default function ChurchProfilePage({
           const igrejaIdNumerico = i.id
           if (igrejaIdNumerico) {
             fetchActivities(igrejaIdNumerico)
+            
+            // Verifica se o usuario e dono ou moderador
+            if (isModerator) {
+              setIsOwner(true)
+            } else if (user) {
+              buscarRelacoesUsuario().then(relacoes => {
+                const souDono = relacoes.some(r => r.igrejaId === igrejaIdNumerico && r.papel === "DONO")
+                setIsOwner(souDono)
+              })
+            }
           }
         }
       })
@@ -149,7 +163,7 @@ export default function ChurchProfilePage({
         console.error("Erro ao buscar igreja da API:", err)
       })
       .finally(() => setIsLoading(false))
-  }, [encodedRazaoSocial, user])
+  }, [encodedRazaoSocial, user, isModerator])
 
   const handleFollow = async () => {
     if (!user) {
@@ -179,12 +193,18 @@ export default function ChurchProfilePage({
 
   const handleSaveActivity = async (data: AtividadeDTO) => {
     try {
-      await registrarAtividade(data)
-      toast.success("Atividade registrada com sucesso!")
+      if (editingActivity) {
+        await atualizarAtividade(editingActivity.id, data)
+        toast.success("Atividade atualizada com sucesso!")
+      } else {
+        await registrarAtividade(data)
+        toast.success("Atividade registrada com sucesso!")
+      }
       setIsCreatingActivity(false)
+      setEditingActivity(null)
       if (igrejaApi) fetchActivities(igrejaApi.id)
     } catch (error: any) {
-      toast.error("Erro ao registrar atividade: " + error.message)
+      toast.error("Erro ao salvar atividade: " + error.message)
     }
   }
 
@@ -207,13 +227,23 @@ export default function ChurchProfilePage({
     notFound()
   }
 
-  if (isCreatingActivity && igrejaApi) {
+  if ((isCreatingActivity || editingActivity) && igrejaApi) {
+    // Para edição, precisamos dos dados originais da AtividadeApi
+    let initialData: AtividadeApi | undefined = undefined;
+    if (editingActivity) {
+      initialData = editingActivity;
+    }
+
     return (
       <div className="mx-auto max-w-3xl px-4 py-8">
         <ActivityForm
           churches={[igrejaApi]}
+          initialData={initialData}
           onSave={handleSaveActivity}
-          onCancel={() => setIsCreatingActivity(false)}
+          onCancel={() => {
+            setIsCreatingActivity(false)
+            setEditingActivity(null)
+          }}
         />
       </div>
     )
@@ -324,27 +354,37 @@ export default function ChurchProfilePage({
                         </div>
                       </div>
                       {isOwner && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Excluir atividade?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Esta acao nao pode ser desfeita. Isso removera permanentemente a atividade da programacao.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteActivity(culto.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                Excluir
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <div className="flex items-center gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                            onClick={() => setEditingActivity(culto)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Excluir atividade?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta acao nao pode ser desfeita. Isso removera permanentemente a atividade da programacao.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteActivity(culto.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       )}
                     </CardContent>
                   </Card>
@@ -358,11 +398,20 @@ export default function ChurchProfilePage({
               <div className="grid gap-4">
                 <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Outras Atividades</h3>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {atividades.map((activity) => (
-                    <div key={activity.id} className="relative group">
-                      <ActivityCard activity={activity} />
+                  {atividades.map((apiActivity) => (
+                    <div key={apiActivity.id} className="relative group">
+                      <ActivityCard activity={mapAtividadeToActivity(apiActivity)} />
                       {isOwner && (
-                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                          <Button 
+                            variant="secondary" 
+                            size="icon" 
+                            className="h-8 w-8 rounded-full shadow-md bg-white opacity-50 cursor-not-allowed border-none"
+                            onClick={() => toast.info("Edicao de atividades disponivel em breve!")}
+                            title="Edicao em breve"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full shadow-md bg-white hover:bg-destructive hover:text-white border-none">
@@ -373,12 +422,12 @@ export default function ChurchProfilePage({
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Excluir atividade?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Deseja remover "{activity.name}"?
+                                  Deseja remover "{apiActivity.descricao}"?
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteActivity(Number(activity.id))} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                <AlertDialogAction onClick={() => handleDeleteActivity(apiActivity.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                                   Excluir
                                 </AlertDialogAction>
                               </AlertDialogFooter>
@@ -472,3 +521,4 @@ export default function ChurchProfilePage({
     </div>
   )
 }
+

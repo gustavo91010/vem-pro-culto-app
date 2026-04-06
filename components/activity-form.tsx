@@ -20,17 +20,27 @@ import type { AtividadeDTO, AtividadeTipo, IgrejaApi } from "@/lib/api"
 interface ActivityFormProps {
   churches: IgrejaApi[]
   initialChurchId?: number
+  initialData?: AtividadeApi
   onSave: (data: AtividadeDTO) => void
   onCancel: () => void
 }
 
-export function ActivityForm({ churches, initialChurchId, onSave, onCancel }: ActivityFormProps) {
+export function ActivityForm({ churches, initialChurchId, initialData, onSave, onCancel }: ActivityFormProps) {
   const singleChurch = churches.length === 1
-  const [igrejaId, setIgrejaId] = useState<string>(initialChurchId?.toString() || (singleChurch ? churches[0].id.toString() : ""))
-  const [tipo, setTipo] = useState<AtividadeTipo>("CULTO")
-  const [descricao, setDescricao] = useState("")
-  const [data, setData] = useState("")
-  const [hora, setHora] = useState("")
+  const [igrejaId, setIgrejaId] = useState<string>(
+    initialData?.igrejaId?.toString() || 
+    initialChurchId?.toString() || 
+    (singleChurch ? churches[0].id.toString() : "")
+  )
+  const [tipo, setTipo] = useState<AtividadeTipo>(initialData?.tipo as AtividadeTipo || "CULTO")
+  const [descricao, setDescricao] = useState(initialData?.descricao || "")
+  
+  // Extrair data e hora do ISO string
+  const initialDate = initialData?.horario ? new Date(initialData.horario).toISOString().split("T")[0] : ""
+  const initialTime = initialData?.horario ? new Date(initialData.horario).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : ""
+
+  const [data, setData] = useState(initialDate)
+  const [hora, setHora] = useState(initialTime)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -51,7 +61,7 @@ export function ActivityForm({ churches, initialChurchId, onSave, onCancel }: Ac
       <Card className="border-border bg-card">
         <CardHeader>
           <CardTitle className="text-lg text-foreground">
-            Cadastrar Nova Atividade
+            {initialData ? "Editar Atividade" : "Cadastrar Nova Atividade"}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
