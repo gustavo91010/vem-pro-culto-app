@@ -11,14 +11,20 @@ const nextConfig = {
     unoptimized: true,
   },
   async rewrites() {
+    const vpcUrl = process.env.VPC_API_URL || 'http://localhost:8084';
+    const authUrl = process.env.AUTH_API_URL || 'http://20.246.66.131:8082';
+    
+    console.log(`Using VPC_API_URL: ${vpcUrl}`);
+    console.log(`Using AUTH_API_URL: ${authUrl}`);
+
     return [
       {
         source: '/api/vpc/:path*',
-        destination: `${process.env.VPC_API_URL || 'http://localhost:8084'}/:path*`,
+        destination: `${vpcUrl}/:path*`,
       },
       {
         source: '/api/auth/:path*',
-        destination: `${process.env.AUTH_API_URL || 'http://20.246.66.131:8082'}/:path*`,
+        destination: `${authUrl}/:path*`,
       },
     ]
   },
