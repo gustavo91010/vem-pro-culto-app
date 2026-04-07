@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   images: {
     remotePatterns: [
       {
@@ -13,11 +14,11 @@ const nextConfig = {
     return [
       {
         source: '/api/vpc/:path*',
-        destination: 'http://localhost:8084/:path*',
+        destination: `${process.env.VPC_API_URL || 'http://localhost:8084'}/:path*`,
       },
       {
         source: '/api/auth/:path*',
-        destination: 'http://20.246.66.131:8082/:path*',
+        destination: `${process.env.AUTH_API_URL || 'http://20.246.66.131:8082'}/:path*`,
       },
     ]
   },
