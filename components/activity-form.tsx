@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { AtividadeDTO, AtividadeTipo, IgrejaApi } from "@/lib/api"
+import type { AtividadeDTO, AtividadeTipo, AtividadeApi, IgrejaApi } from "@/lib/api"
 
 interface ActivityFormProps {
   churches: IgrejaApi[]
