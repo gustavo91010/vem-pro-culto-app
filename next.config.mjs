@@ -11,8 +11,8 @@ const nextConfig = {
     unoptimized: true,
   },
   async rewrites() {
-    const vpcUrl = process.env.VPC_API_URL || 'http://localhost:8084';
-    const authUrl = process.env.AUTH_API_URL || 'http://20.246.66.131:8082';
+    const vpcUrl = process.env.VPC_API_URL || 'http://3.229.225.73:8084';
+    const authUrl = process.env.AUTH_API_URL || 'http://3.229.225.73:8082';
     
     console.log(`Using VPC_API_URL: ${vpcUrl}`);
     console.log(`Using AUTH_API_URL: ${authUrl}`);
