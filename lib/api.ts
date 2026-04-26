@@ -1,5 +1,8 @@
-const API_BASE_URL = "/api/vpc";
-const AUTH_API_BASE_URL = "/api/auth";
+// const API_BASE_URL = "/api/vpc";
+// const AUTH_API_BASE_URL = "/api/auth";
+const API_BASE_URL = "http://3.229.225.73:8084";
+const AUTH_API_BASE_URL = "http://3.229.225.73:8082";
+
 const APPLICATION_NAME = "vem-pro-culto";
 
 function getAuthToken(): string | null {

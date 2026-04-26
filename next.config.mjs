@@ -19,12 +19,15 @@ const nextConfig = {
 
     return [
       {
-        source: '/api/vpc/:path*',
+        // Corrigido para /api-vpc que está no seu .env
+        source: '/api-vpc/:path*',
         destination: `${vpcUrl}/:path*`,
       },
       {
-        source: '/api/auth/:path*',
-        destination: `${authUrl}/:path*`,
+        // Corrigido para /api-auth que está no seu .env 
+        // Adicionado o /auth no destino para bater com o Controller
+        source: '/api-auth/:path*',
+        destination: `${authUrl}/auth/:path*`,
       },
     ]
   },
