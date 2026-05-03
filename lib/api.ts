@@ -1,15 +1,18 @@
 // const API_BASE_URL = "/api/vpc";
 // const AUTH_API_BASE_URL = "/api/auth";
-const API_BASE_URL = "http://3.229.225.73:8084";
-const AUTH_API_BASE_URL = "http://3.229.225.73:8082";
+const API_BASE_URL = "/api-vpc";
+const AUTH_API_BASE_URL = "/api-auth";
 
 const APPLICATION_NAME = "vem-pro-culto";
 
 function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
   const token = localStorage.getItem("vpc_token");
+  console.log('[getAuthToken] Token no localStorage:', token ? 'Encontrado' : 'NÃO ENCONTRADO');
   if (!token) return null;
-  return token.startsWith('Bearer ') ? token.substring(7) : token;
+  // Se já tiver Bearer, retorna como está. Se não, adiciona.
+  // O backend geralmente espera "Bearer <token>"
+  return token.startsWith('Bearer ') ? token : `Bearer ${token}`;
 }
 
 async function fetchApi<T>(
@@ -17,44 +20,50 @@ async function fetchApi<T>(
   path: string,
   options?: RequestInit,
 ): Promise<T> {
+  const isServer = typeof window === "undefined";
   const fullPath = path.startsWith('/') ? path : `/${path}`;
   const url = `${baseUrl}${fullPath}`;
-  console.log(`[fetchApi] Chamando: ${options?.method || "GET"} ${url}`);
+  
+  // Logando o cabeçalho Authorization (resumido) para debug
+  const authHeader = (options?.headers as any)?.["Authorization"] || "Nenhum";
+  const authSnippet = authHeader !== "Nenhum" ? `${authHeader.substring(0, 20)}...` : "Nenhum";
+
+  console.log(`[fetchApi] ${isServer ? '[SERVER]' : '[CLIENT]'} Chamando: ${options?.method || "GET"} ${url} | Auth: ${authSnippet}`);
 
   try {
     const res = await fetch(url, {
       ...options,
+      cache: 'no-store',
       headers: {
         "Content-Type": "application/json",
         ...options?.headers,
       },
     });
 
+    console.log(`[fetchApi] Resposta de ${url}: Status ${res.status}`);
+
     if (!res.ok) {
       let errorMsg = `Erro ${res.status}: ${res.statusText}`;
       
       try {
-        // Lemos como texto primeiro para garantir que pegamos qualquer resposta do corpo
         const responseText = await res.text();
-        
+        console.log('[fetchApi] Corpo do erro (texto):', responseText);
         try {
-          // Tentamos converter para JSON se for possível
           const errorJson = JSON.parse(responseText);
-          // Priorizamos chaves comuns de erro em Spring/Express/etc
           errorMsg = errorJson.message || errorJson.error || errorJson.details || responseText || errorMsg;
         } catch (e) {
-          // Se não for JSON, usamos o texto puro se ele existir
           if (responseText) errorMsg = responseText;
         }
       } catch (e) {
-        // Fallback para a mensagem de status se falhar ao ler o corpo
+        // Fallback
       }
       
-      console.error(`[fetchApi] Erro na resposta: ${errorMsg}`);
       throw new Error(errorMsg);
     }
 
-    return res.json();
+    const data = await res.json();
+    console.log(`[fetchApi] JSON recebido de ${url}:`, data);
+    return data;
   } catch (error) {
     console.error(`[fetchApi] Erro em ${url}:`, error);
     throw error;
@@ -232,23 +241,37 @@ export async function listarTodasIgrejas(incluirInativas = false): Promise<Igrej
 
 export async function listarIgrejasDoUsuario(): Promise<IgrejaApi[]> {
   const token = getAuthToken();
+  console.log('[listarIgrejasDoUsuario] Iniciando busca com token:', token ? 'Presente' : 'Ausente');
+  
   if (!token) return [];
 
-  const data = await fetchApi<any>(API_BASE_URL, "/igreja/do-usuario", {
-    headers: { Authorization: token },
-  });
-  return Array.isArray(data) ? data : (data.igrejas || []);
+  try {
+    const data = await fetchApi<any>(API_BASE_URL, "/igreja/do-usuario", {
+      headers: { Authorization: token },
+    });
+    console.log('[listarIgrejasDoUsuario] Dados brutos recebidos:', data);
+    
+    const lista = Array.isArray(data) ? data : (data.igrejas || []);
+    console.log('[listarIgrejasDoUsuario] Lista final processada:', lista);
+    return lista;
+  } catch (error) {
+    console.error('[listarIgrejasDoUsuario] Erro fatal na chamada:', error);
+    return [];
+  }
 }
 
 export async function registrarIgreja(igreja: IgrejaRequest): Promise<IgrejaApi> {
   const token = getAuthToken();
   if (!token) throw new Error("Usuário não autenticado");
 
-  return fetchApi<IgrejaApi>(API_BASE_URL, "/igreja", {
+  const data= await fetchApi<IgrejaApi>(API_BASE_URL, "/igreja", {
     method: "POST",
     headers: { Authorization: token },
     body: JSON.stringify(igreja),
   });
+  console.log("registrarIgreja", data);
+  
+return data;
 }
 
 /**
@@ -318,13 +341,9 @@ export async function buscarRelacoesUsuario(): Promise<RelacaoComIgreja[]> {
   const token = getAuthToken();
   if (!token) return [];
 
-  try {
-    return await fetchApi<RelacaoComIgreja[]>(API_BASE_URL, "/usuarios/relacao-igreja", {
-      headers: { Authorization: token },
-    });
-  } catch (error) {
-    return [];
-  }
+  return await fetchApi<RelacaoComIgreja[]>(API_BASE_URL, "/usuarios/relacao-igreja", {
+    headers: { Authorization: token },
+  });
 }
 
 export async function atualizarUsuario(dados: UsuarioUpdate): Promise<void> {
@@ -341,15 +360,15 @@ export async function atualizarUsuario(dados: UsuarioUpdate): Promise<void> {
 // --- Auth (Microserviço) ---
 
 export async function loginApi(email: string, password: string) {
-  return fetchApi<any>(AUTH_API_BASE_URL, "/auth/signin", {
+  return fetchApi<any>(AUTH_API_BASE_URL, "/signin", {
     method: "POST",
     body: JSON.stringify({ email, password, application: APPLICATION_NAME }),
   });
 }
 
 export async function registerApi(name: string, email: string, password: string) {
-  return fetchApi<any>(AUTH_API_BASE_URL, "/auth/signup", {
+  return fetchApi<any>(AUTH_API_BASE_URL, "/signup", {
     method: "POST",
-    body: JSON.stringify({ name, email, password, aplication: APPLICATION_NAME }),
+    body: JSON.stringify({ name, email, password, application: APPLICATION_NAME }),
   });
 }

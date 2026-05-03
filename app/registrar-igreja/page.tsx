@@ -35,7 +35,9 @@ export default function RegistrarIgrejaPage() {
   const handleSave = async (data: IgrejaRequest) => {
     setIsSubmitting(true)
     try {
-      await registrarIgreja(data)
+      const igreja_registrada= await registrarIgreja(data)
+      console.log('igreja_registrada',igreja_registrada);
+      
       toast.success("Igreja cadastrada com sucesso! Nossa equipe irá revisar os dados.")
       router.push("/admin") // Se for admin, volta pro painel. Se não for, podemos redirecionar para uma página de "Meus Cadastros" futuramente.
     } catch (error: any) {

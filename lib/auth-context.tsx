@@ -146,8 +146,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("vpc_token")
   }, [])
 
-  const isAdmin = !!user?.roles?.some((r) => r === Role.ADMIN || r === Role.MODERATOR)
-  const isModerator = !!user?.roles?.includes(Role.MODERATOR)
+  const isAdmin = !!user?.roles?.some((r) => 
+    r === Role.ADMIN || r === "ROLE_ADMIN" || 
+    r === Role.MODERATOR || r === "ROLE_MODERATOR"
+  )
+  const isModerator = !!user?.roles?.some((r) => 
+    r === Role.MODERATOR || r === "ROLE_MODERATOR"
+  )
 
   return (
     <AuthContext.Provider

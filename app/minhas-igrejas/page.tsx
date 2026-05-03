@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/lib/auth-context"
+import { cn } from "@/lib/utils"
 import {
   listarIgrejasDoUsuario,
   buscarRelacoesUsuario,
@@ -24,40 +25,17 @@ import {
   type RelacaoComIgreja
 } from "@/lib/api"
 import { toast } from "sonner"
-
-function ChurchItem({ church }: { church: IgrejaApi }) {
-  const linkHref = `/igreja/${encodeURIComponent(church.razaoSocial)}`
-  return (
-    <Link href={linkHref}>
-      <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-background p-4 hover:bg-muted/50 transition-colors cursor-pointer">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-foreground truncate">
-              {church.nomeFantasia || church.nome || church.razaoSocial}
-            </h3>
-            {!church.ativo && (
-              <Badge variant="outline" className="text-orange-500 border-orange-500">
-                Pendente
-              </Badge>
-            )}
-          </div>
-          <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-            <MapPin className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">
-              {church.endereco?.bairro || (church as any).bairro}, {church.endereco?.cidade || (church as any).cidade}
-            </span>
-          </div>
-        </div>
-      </div>
-    </Link>
-  )
-}
+import { Role } from "@/lib/enums/role"
 
 export default function MinhasIgrejasPage() {
-  const { user, isModerator } = useAuth()
+  const { user } = useAuth()
   const [churches, setChurches] = useState<IgrejaApi[]>([])
   const [relations, setRelations] = useState<RelacaoComIgreja[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Permissões baseadas na sua regra:
+  const isSuperAdmin = user?.roles?.includes(Role.ADMIN as any) || user?.roles?.includes("ROLE_ADMIN" as any)
+  const isModerator = user?.roles?.includes(Role.MODERATOR as any) || user?.roles?.includes("ROLE_MODERATOR" as any)
 
   const fetchData = async () => {
     setLoading(true)
@@ -91,25 +69,34 @@ export default function MinhasIgrejasPage() {
     }
   }
 
-  // Separar igrejas por relacionamento
+  // IDs das igrejas onde sou DONO
   const ownedIds = new Set(
-    relations.filter(r => r.papel === "DONO").map(r => r.igrejaId)
+    relations
+      .filter(r => r.papel?.toUpperCase().trim() === "DONO")
+      .map(r => Number(r.igrejaId))
   )
+  
+  // IDs das igrejas FAVORITAS
   const favoriteIds = new Set(
-    relations.filter(r => r.papel === "FAVORITO" || r.papel === "SEGUIDOR").map(r => r.igrejaId)
+    relations
+      .filter(r => {
+        const p = r.papel?.toUpperCase().trim();
+        return p === "FAVORITO" || p === "SEGUIDOR";
+      })
+      .map(r => Number(r.igrejaId))
   )
 
-  const ownedChurches = churches.filter(c => ownedIds.has(c.id))
-  const favoriteChurches = churches.filter(c => favoriteIds.has(c.id))
+  const ownedChurches = churches.filter(c => ownedIds.has(Number(c.id)))
+  const favoriteChurches = churches.filter(c => favoriteIds.has(Number(c.id)))
 
-  // Moderador: Sempre vê todas as igrejas na sua coluna, sem filtros de "conhecidas"
-  const moderatorChurches = isModerator ? churches : []
+  // ADMIN vê todas as igrejas do sistema
+  const allChurches = isSuperAdmin ? churches : []
 
   const hasOwned = ownedChurches.length > 0
   const hasFavorites = favoriteChurches.length > 0
-  const hasModeratorCol = moderatorChurches.length > 0
+  const hasAdminCol = allChurches.length > 0
 
-  const visibleColumns = [hasOwned, hasFavorites, hasModeratorCol].filter(Boolean).length
+  const visibleColumns = [hasOwned, hasFavorites, hasAdminCol].filter(Boolean).length
 
   if (!user) {
     return (
@@ -117,8 +104,8 @@ export default function MinhasIgrejasPage() {
         <Card className="w-full max-w-md border-border bg-card text-center">
           <CardContent className="flex flex-col items-center gap-4 py-12">
             <Church className="h-12 w-12 text-muted-foreground/40" />
-            <h2 className="text-xl font-semibold text-foreground">Acesso Necessario</h2>
-            <p className="text-sm text-muted-foreground">Faca login para gerenciar suas igrejas.</p>
+            <h2 className="text-xl font-semibold text-foreground">Acesso Necessário</h2>
+            <p className="text-sm text-muted-foreground">Faça login para gerenciar suas igrejas.</p>
             <Button asChild><Link href="/login">Fazer Login</Link></Button>
           </CardContent>
         </Card>
@@ -132,7 +119,7 @@ export default function MinhasIgrejasPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Minhas Igrejas</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Suas igrejas organizadas por relacionamento.
+            Gerencie as igrejas que você administra ou segue.
           </p>
         </div>
         <Button asChild>
@@ -152,7 +139,7 @@ export default function MinhasIgrejasPage() {
           <CardContent className="flex flex-col items-center gap-4 py-12">
             <Church className="h-12 w-12 text-muted-foreground/40" />
             <p className="text-muted-foreground text-sm">
-              Voce ainda nao tem igrejas vinculadas.
+              Você ainda não tem igrejas vinculadas.
             </p>
             <Button asChild variant="link" size="sm">
               <Link href="/registrar-igreja">Registrar uma igreja</Link>
@@ -161,23 +148,62 @@ export default function MinhasIgrejasPage() {
         </Card>
       ) : (
         <div className={`grid grid-cols-1 gap-6 ${
-          visibleColumns === 1 ? "md:grid-cols-1 max-w-2xl" :
+          visibleColumns === 1 ? "md:grid-cols-1 max-w-2xl mx-auto" :
           visibleColumns === 2 ? "md:grid-cols-2" :
           "md:grid-cols-3"
         }`}>
-          {/* Coluna Admin / Dono */}
+          
+          {/* Coluna Minhas Igrejas (DONO) */}
           {hasOwned && (
             <Card className="border-border bg-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg text-foreground">
                   <Crown className="h-5 w-5 text-amber-500" />
-                  Admin ({ownedChurches.length})
+                  Minhas Igrejas ({ownedChurches.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col gap-3">
                   {ownedChurches.map((church) => (
-                    <ChurchItem key={church.id} church={church} />
+                    <div key={church.id} className="flex flex-col gap-2 rounded-lg border border-border bg-background p-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <Link href={`/igreja/${encodeURIComponent(church.razaoSocial)}`} className="flex-1 min-w-0 hover:opacity-80 transition-opacity">
+                          <h3 className="font-semibold text-foreground truncate">
+                            {church.nomeFantasia || church.nome || church.razaoSocial}
+                          </h3>
+                          <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <MapPin className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">
+                              {church.endereco?.cidade || (church as any).cidade}
+                            </span>
+                          </div>
+                        </Link>
+                        <Badge variant="outline" className={church.ativo ? "text-green-600 border-green-600" : "text-orange-500 border-orange-500"}>
+                          {church.ativo ? "Ativa" : "Pendente"}
+                        </Badge>
+                      </div>
+                      
+                      {/* Moderador ou Admin podem alterar status de suas próprias igrejas */}
+                      {(isModerator || isSuperAdmin) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleToggleStatus(church.id)}
+                          className={cn(
+                            "mt-2 w-full",
+                            church.ativo 
+                              ? "text-destructive hover:bg-destructive/10 border-destructive/20" 
+                              : "text-green-600 hover:bg-green-50 border-green-600/20"
+                          )}
+                        >
+                          {church.ativo ? (
+                            <><XCircle className="mr-1.5 h-4 w-4" />Desativar</>
+                          ) : (
+                            <><CheckCircle className="mr-1.5 h-4 w-4" />Ativar</>
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   ))}
                 </div>
               </CardContent>
@@ -196,56 +222,58 @@ export default function MinhasIgrejasPage() {
               <CardContent>
                 <div className="flex flex-col gap-3">
                   {favoriteChurches.map((church) => (
-                    <ChurchItem key={church.id} church={church} />
+                    <Link key={church.id} href={`/igreja/${encodeURIComponent(church.razaoSocial)}`}>
+                      <div className="flex items-center gap-3 rounded-lg border border-border bg-background p-4 hover:bg-muted/50 transition-colors">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-foreground truncate">
+                            {church.nomeFantasia || church.nome || church.razaoSocial}
+                          </h3>
+                          <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <MapPin className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{church.endereco?.cidade}</span>
+                          </div>
+                        </div>
+                        <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                      </div>
+                    </Link>
                   ))}
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Coluna Moderador */}
-          {hasModeratorCol && (
+          {/* Coluna Super Admin (Todas as Igrejas) */}
+          {hasAdminCol && (
             <Card className="border-border bg-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg text-foreground">
                   <Shield className="h-5 w-5 text-blue-500" />
-                  Moderador ({moderatorChurches.length})
+                  Painel Geral ({allChurches.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col gap-3">
-                  {moderatorChurches.map((church) => (
+                  {allChurches.map((church) => (
                     <div key={church.id} className="flex items-center gap-3 rounded-lg border border-border bg-background p-4">
                       <Link href={`/igreja/${encodeURIComponent(church.razaoSocial)}`} className="flex-1 min-w-0 hover:opacity-80 transition-opacity">
                         <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-foreground truncate">
+                          <h3 className="font-semibold text-foreground truncate text-sm">
                             {church.nomeFantasia || church.nome || church.razaoSocial}
                           </h3>
-                          <Badge variant="outline" className={church.ativo ? "text-green-600 border-green-600" : "text-orange-500 border-orange-500"}>
+                        </div>
+                        <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Badge variant="outline" className={cn("text-[10px] px-1 h-4", church.ativo ? "text-green-600 border-green-600" : "text-orange-500 border-orange-500")}>
                             {church.ativo ? "Ativa" : "Inativa"}
                           </Badge>
                         </div>
-                        <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-                          <MapPin className="h-3.5 w-3.5 shrink-0" />
-                          <span className="truncate">
-                            {church.endereco?.bairro || (church as any).bairro}, {church.endereco?.cidade || (church as any).cidade}
-                          </span>
-                        </div>
                       </Link>
                       <Button
-                        variant="outline"
-                        size="sm"
+                        variant="ghost"
+                        size="icon"
                         onClick={() => handleToggleStatus(church.id)}
-                        className={church.ativo
-                          ? "text-destructive hover:bg-destructive/10 border-destructive/20 shrink-0"
-                          : "text-green-600 hover:bg-green-50 border-green-600/20 shrink-0"
-                        }
+                        className={church.ativo ? "text-destructive" : "text-green-600"}
                       >
-                        {church.ativo ? (
-                          <><XCircle className="mr-1 h-4 w-4" />Desativar</>
-                        ) : (
-                          <><CheckCircle className="mr-1 h-4 w-4" />Ativar</>
-                        )}
+                        {church.ativo ? <XCircle className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
                       </Button>
                     </div>
                   ))}
