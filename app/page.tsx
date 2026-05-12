@@ -127,8 +127,7 @@ export default function HomePage() {
               Encontre sua igreja
             </h1>
             <p className="mx-auto mt-3 max-w-2xl text-base leading-relaxed text-white/85 sm:text-lg text-pretty drop-shadow">
-              Descubra igrejas, horarios de cultos e atividades perto de voce em
-              Sao Paulo e Rio de Janeiro.
+              Descubra igrejas, horarios de cultos e atividades perto de voce.
             </p>
             <div className="mt-6 flex items-center justify-center gap-3">
               <Button asChild size="lg" className="shadow-lg">
