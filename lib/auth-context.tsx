@@ -26,19 +26,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = localStorage.getItem("vpc_token")
     if (!token) return
 
+    // Tenta recuperar dados básicos salvos para evitar o "Usuario" genérico no refresh
+    const savedUserJson = localStorage.getItem("auth_user_data")
+    const savedUser = savedUserJson ? JSON.parse(savedUserJson) : null
+
     try {
       const apiUser = await getUsuarioLogado()
-      setUser({
+      const userData = {
         id: String(apiUser.id),
-        name: apiUser.name || "Usuario",
-        email: apiUser.email || "email@igreja.com",
-        roles: (apiUser.roles || []) as Role[],
+        name: apiUser.name || savedUser?.name || "Usuario",
+        email: apiUser.email || savedUser?.email || "email@igreja.com",
+        roles: (apiUser.roles?.length ? apiUser.roles : (savedUser?.roles || [])) as Role[],
         igrejasFavoritas: apiUser.igrejasFavoritas || [],
-      })
+      }
+      setUser(userData)
+      // Atualiza o cache local
+      localStorage.setItem("auth_user_data", JSON.stringify(userData))
     } catch (e) {
       console.error("Sessão expirada ou erro ao carregar usuário")
-      // Se der erro 401 ou similar, limpamos o token para nao ficar tentando
-      if (token) localStorage.removeItem("vpc_token")
+      if (savedUser) {
+        setUser(savedUser)
+      } else {
+        if (token) localStorage.removeItem("vpc_token")
+        localStorage.removeItem("auth_user_data")
+      }
     }
   }, [])
 
@@ -46,7 +57,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem("vpc_token")
+      const savedUserJson = localStorage.getItem("auth_user_data")
+      
       if (token) {
+        if (savedUserJson) {
+          setUser(JSON.parse(savedUserJson))
+        }
         await refreshUserData()
       }
       setIsLoading(false)
@@ -61,43 +77,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data) {
         const tokenValue = data.jwt || data.access_token
         const roles = (data.roles || []) as Role[]
-        console.log(data)
-        console.log("roles ", roles)
+        
         if (tokenValue) {
           localStorage.setItem("vpc_token", String(tokenValue))
           
-          // Busca perfil completo (incluindo favoritas) logo após login
+          let userData: Omit<User, "password">;
           try {
             const apiUser = await getUsuarioLogado()
-            const userData: Omit<User, "password"> = {
+            userData = {
               id: String(apiUser.id),
-              name: apiUser.name || data.name || data.email.split("@")[0] || "Usuario",
+              name: apiUser.name || data.name || data.email?.split("@")[0] || "Usuario",
               email: apiUser.email || data.email || "email@email.com",
-              roles: (apiUser.roles || roles) as Role[],
+              roles: (apiUser.roles?.length ? apiUser.roles : roles) as Role[],
               igrejasFavoritas: apiUser.igrejasFavoritas || [],
             }
-            setUser(userData)
           } catch (e) {
-            // Fallback se o /me falhar logo apos o login
-            const userData: Omit<User, "password"> = {
+            userData = {
               id: data.id || "1",
-              name: data.name || data.email.split("@")[0] || "Usuario",
+              name: data.name || data.email?.split("@")[0] || "Usuario",
               email: data.email || "email@email.com",
               roles: roles,
               igrejasFavoritas: data.igrejasFavoritas || [],
             }
-            setUser(userData)
           }
-        } else {
-          console.warn("Login não retornou um token válido. Token não salvo.")
-          const userData: Omit<User, "password"> = {
-            id: data.id || "1",
-            name: data.name || data.email.split("@")[0] || "Usuario",
-            email: data.email || "email@email.com",
-            roles: roles,
-            igrejasFavoritas: data.igrejasFavoritas || [],
-          }
+          
           setUser(userData)
+          localStorage.setItem("auth_user_data", JSON.stringify(userData))
         }
         return { success: true }
       }
@@ -118,12 +123,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (data) {
           const userData: Omit<User, "password"> = {
             id: data.id,
-            name: data.name,
-            email: data.email,
+            name: data.name || name,
+            email: data.email || email,
             roles: (data.roles || []) as Role[],
           }
           setUser(userData)
-          // const tokenValue = data.jwt || data.access_token
+          localStorage.setItem("auth_user_data", JSON.stringify(userData))
+          
           const tokenValue = data.jwt 
           if (tokenValue) {
             localStorage.setItem("vpc_token", String(tokenValue))
@@ -144,6 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     setUser(null)
     localStorage.removeItem("vpc_token")
+    localStorage.removeItem("auth_user_data")
   }, [])
 
   const isAdmin = !!user?.roles?.some((r: any) => 

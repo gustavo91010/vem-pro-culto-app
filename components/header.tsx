@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useState } from "react"
 import { Church, MapPin, LogIn, LogOut, Menu, X, User, CalendarDays } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -10,8 +10,14 @@ import { cn } from "@/lib/utils"
 
 export function Header() {
   const pathname = usePathname()
+  const router = useRouter()
   const { user, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  const handleLogout = () => {
+    logout()
+    router.push("/")
+  }
 
   // Links base (Inicio sempre primeiro, Mapa sempre ultimo)
   const baseLinks = [
@@ -99,7 +105,7 @@ export function Header() {
                   {user.name}
                 </span>
               </div>
-              <Button variant="ghost" size="sm" onClick={logout}>
+              <Button variant="ghost" size="sm" onClick={handleLogout}>
                 <LogOut className="mr-1.5 h-4 w-4" />
                 Sair
               </Button>
@@ -199,7 +205,7 @@ export function Header() {
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    logout()
+                    handleLogout()
                     setMobileOpen(false)
                   }}
                 >

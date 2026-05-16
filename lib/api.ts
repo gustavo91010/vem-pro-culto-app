@@ -47,15 +47,32 @@ async function fetchApi<T>(
       
       try {
         const responseText = await res.text();
-        console.log('[fetchApi] Corpo do erro (texto):', responseText);
+        console.log(`[fetchApi] Erro de ${url} (corpo):`, responseText);
+        
         try {
           const errorJson = JSON.parse(responseText);
-          errorMsg = errorJson.message || errorJson.error || errorJson.details || responseText || errorMsg;
+          
+          // Tenta extrair a mensagem mais específica possível
+          if (errorJson.message && typeof errorJson.message === 'string') {
+            errorMsg = errorJson.message;
+          } else if (errorJson.error && typeof errorJson.error === 'string') {
+            errorMsg = errorJson.error;
+          } else if (errorJson.details && typeof errorJson.details === 'string') {
+            errorMsg = errorJson.details;
+          } else if (Array.isArray(errorJson.errors) && errorJson.errors.length > 0) {
+            // Caso de erros de validação do Spring (ex: @Valid)
+            errorMsg = errorJson.errors.map((e: any) => e.defaultMessage || e).join(", ");
+          } else if (errorJson.developerMessage && Array.isArray(errorJson.developerMessage)) {
+            errorMsg = errorJson.developerMessage[0] || errorMsg;
+          }
         } catch (e) {
-          if (responseText) errorMsg = responseText;
+          // Se não for JSON, usa o texto puro se existir
+          if (responseText && responseText.length < 200) {
+            errorMsg = responseText;
+          }
         }
       } catch (e) {
-        // Fallback
+        console.error('[fetchApi] Falha ao ler corpo do erro:', e);
       }
       
       throw new Error(errorMsg);
