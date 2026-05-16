@@ -10,7 +10,7 @@ const _inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 export const metadata: Metadata = {
   title: "Encontre Igrejas - Busque igrejas e atividades perto de voce",
   description:
-    "Aplicativo para encontrar igrejas, horarios de cultos, atividades e eventos em Sao Paulo e Rio de Janeiro.",
+    "Aplicativo para encontrar igrejas, horarios de cultos, atividades e eventos proximo de voce.",
 }
 
 export const viewport: Viewport = {

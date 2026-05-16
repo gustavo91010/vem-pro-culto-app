@@ -22,7 +22,7 @@ export default function MapPage() {
   }, [])
 
   return (
-    <div className="h-screen w-full">
+    <div className="h-[calc(100vh-64px)] w-full">
       <MapView churches={churches} />
     </div>
   )
