@@ -24,9 +24,6 @@ import { getChurchImageUrl, getActivityImageUrl } from "@/lib/utils"
 import { toast } from "sonner"
 
 function mapIgrejaToChurch(i: IgrejaApi): ChurchType {
-// ...
-
-function mapIgrejaToChurch(i: IgrejaApi): ChurchType {
   return {
     id: String(i.id),
     name: i.nomeFantasia || i.nome || i.razaoSocial,

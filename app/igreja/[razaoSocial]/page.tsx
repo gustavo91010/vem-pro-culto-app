@@ -60,7 +60,6 @@ import { getChurchImageUrl } from "@/lib/utils"
 import { toast } from "sonner"
 
 function mapAtividadeToActivity(a: AtividadeApi): Activity & { churchName?: string } {
-// ... (rest of function)
   const horario = new Date(a.horario)
   return {
     id: String(a.id),
@@ -86,7 +85,7 @@ function mapIgrejaToChurch(i: IgrejaApi): ChurchType {
     website: (i as any).redesSociais?.[0]?.url || (i as any).site || "",
     lat: (i as any).endereco?.latitude || i.latitude || 0,
     lng: (i as any).endereco?.longitude || i.longitude || 0,
-    description: i.description || i.descricao,
+    description: i.descricao,
     imageUrl: getChurchImageUrl(i.imagemUrl, i.id),
     activities: [],
   }

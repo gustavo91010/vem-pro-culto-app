@@ -1,8 +1,5 @@
 "use client"
 
-import { cn, getChurchImageUrl } from "@/lib/utils"
-
-// ... (omitindo imports repetidos por segurança se o replace lidar bem, mas vou colocar o bloco completo)
 import { useState, useMemo, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
@@ -13,10 +10,10 @@ import { ActivityCard } from "@/components/activity-card"
 import { SearchFilters } from "@/components/search-filters"
 import { useAuth } from "@/lib/auth-context"
 import { listarTodasAtividades, listarTodasIgrejas, type AtividadeApi, type IgrejaApi, type RelacaoComIgreja } from "@/lib/api"
+import { getChurchImageUrl } from "@/lib/utils"
 import type { Activity, Church as ChurchType } from "@/lib/mock-data"
 
 function mapAtividadeToActivity(a: AtividadeApi): Activity & { churchName: string } {
-// ...
   const horario = new Date(a.horario)
   return {
     id: String(a.id),
