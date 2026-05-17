@@ -20,22 +20,11 @@ import { Separator } from "@/components/ui/separator"
 import { getActivityById, getChurchById as getMockChurchById, type Church as ChurchType } from "@/lib/mock-data"
 import { buscarAtividadePorId, buscarIgrejaPorId, type AtividadeApi, type IgrejaApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
+import { getChurchImageUrl, getActivityImageUrl } from "@/lib/utils"
 import { toast } from "sonner"
 
-const categoryImages: Record<string, string> = {
-  evento: "/images/activities/evento.svg",
-  jovens: "/images/activities/jovens.svg",
-  estudo: "/images/activities/estudo.svg",
-  musica: "/images/activities/musica.svg",
-  social: "/images/activities/social.svg",
-  saude: "/images/activities/saude.svg",
-  criancas: "/images/activities/criancas.svg",
-}
-
-function getCategoryImage(category: string): string {
-  const key = category.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-  return categoryImages[key] || categoryImages.evento
-}
+function mapIgrejaToChurch(i: IgrejaApi): ChurchType {
+// ...
 
 function mapIgrejaToChurch(i: IgrejaApi): ChurchType {
   return {
@@ -51,7 +40,7 @@ function mapIgrejaToChurch(i: IgrejaApi): ChurchType {
     lat: (i as any).endereco?.latitude || i.latitude,
     lng: (i as any).endereco?.longitude || i.longitude,
     description: i.descricao,
-    imageUrl: i.imagemUrl || "/images/churches/default.svg",
+    imageUrl: getChurchImageUrl(i.imagemUrl, i.id),
     activities: [],
   }
 }
@@ -212,7 +201,7 @@ export default function ActivityDetailPage({
         {/* Activity Image Banner */}
         <div className="relative h-48 sm:h-56 w-full">
           <Image
-            src={getCategoryImage(activity.category)}
+            src={getActivityImageUrl(activity.category)}
             alt={`Imagem de ${activity.category}`}
             fill
             priority

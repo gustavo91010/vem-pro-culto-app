@@ -6,6 +6,8 @@ import "leaflet/dist/leaflet.css"
 import type { IgrejaApi } from "@/lib/api"
 import { LocateFixed } from "lucide-react"
 import { Button } from "./ui/button"
+import { getChurchImageUrl } from "@/lib/utils"
+import { toast } from "sonner"
 
 const defaultIcon = L.icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -26,18 +28,32 @@ export default function MapView({ churches, focusChurchId }: Props) {
   const markersLayerRef = useRef<L.LayerGroup | null>(null)
 
   const handleLocateMe = () => {
-    if (!navigator.geolocation) return
+    console.log("[MapView] Tentando obter localização...");
+    if (!navigator.geolocation) {
+      console.error("[MapView] Geolocation não suportada ou bloqueada por falta de HTTPS.");
+      toast.error("Geolocalização indisponível. Verifique se está usando HTTPS ou localhost.");
+      return
+    }
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords
+        console.log("[MapView] Localização obtida:", latitude, longitude);
         if (mapRef.current) {
           mapRef.current.flyTo([latitude, longitude], 15)
         }
       },
       (error) => {
         console.error("Erro ao obter localização:", error)
-      }
+        if (error.code === 1) {
+          toast.error("Permissão de localização negada pelo navegador.")
+        } else if (error.code === 3) {
+          toast.error("Tempo esgotado ao buscar localização.")
+        } else {
+          toast.error("Não foi possível obter sua localização atual.")
+        }
+      },
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
     )
   }
 
@@ -95,10 +111,13 @@ export default function MapView({ churches, focusChurchId }: Props) {
         
         const marker = L.marker([lat, lng], { icon: defaultIcon })
         marker.bindPopup(
-          `<div>
-            <strong>${nome}</strong>
-            <p>${logradouro}</p>
-            <a href="/igreja/${encodeURIComponent(church.razaoSocial)}">Ver detalhes</a>
+          `<div style="width: 200px; font-family: sans-serif;">
+            <div style="height: 100px; width: 100%; overflow: hidden; border-radius: 6px; margin-bottom: 8px;">
+              <img src="${getChurchImageUrl(church.imagemUrl, church.id)}" style="width: 100%; height: 100%; object-fit: cover;" alt="${nome}" />
+            </div>
+            <strong style="font-size: 14px; display: block; margin-bottom: 2px;">${nome}</strong>
+            <p style="font-size: 12px; color: #666; margin: 0 0 8px 0; line-height: 1.4;">${logradouro}</p>
+            <a href="/igreja/${encodeURIComponent(church.razaoSocial)}" style="display: inline-block; background-color: #000; color: #fff; padding: 6px 12px; border-radius: 4px; font-size: 12px; text-decoration: none;">Ver detalhes</a>
           </div>`
         )
         markersLayer.addLayer(marker)

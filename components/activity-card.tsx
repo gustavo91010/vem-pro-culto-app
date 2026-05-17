@@ -5,22 +5,8 @@ import Link from "next/link"
 import { Calendar, Clock, Church } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { getActivityImageUrl } from "@/lib/utils"
 import type { Activity } from "@/lib/mock-data"
-
-const categoryImages: Record<string, string> = {
-  evento: "/images/activities/evento.svg",
-  jovens: "/images/activities/jovens.svg",
-  estudo: "/images/activities/estudo.svg",
-  musica: "/images/activities/musica.svg",
-  social: "/images/activities/social.svg",
-  saude: "/images/activities/saude.svg",
-  criancas: "/images/activities/criancas.svg",
-}
-
-function getCategoryImage(category: string): string {
-  const key = category.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-  return categoryImages[key] || categoryImages.evento
-}
 
 interface ActivityCardProps {
   activity: Activity & { churchName?: string }
@@ -40,7 +26,7 @@ export function ActivityCard({ activity }: ActivityCardProps) {
         {/* Category Image */}
         <div className="relative h-32 w-full overflow-hidden">
           <Image
-            src={getCategoryImage(activity.category)}
+            src={getActivityImageUrl(activity.category)}
             alt={`Imagem de ${activity.category}`}
             fill
             className="object-cover transition-transform duration-300 group-hover:scale-105"

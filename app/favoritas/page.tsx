@@ -7,6 +7,7 @@ import { ChurchCard } from "@/components/church-card"
 import { type IgrejaApi, listarTodasIgrejas } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { getChurchImageUrl } from "@/lib/utils"
 import type { Church as ChurchType } from "@/lib/mock-data"
 
 function mapIgrejaToChurch(i: IgrejaApi): ChurchType {
@@ -23,7 +24,7 @@ function mapIgrejaToChurch(i: IgrejaApi): ChurchType {
     lat: (i as any).endereco?.latitude || i.latitude || 0,
     lng: (i as any).endereco?.longitude || i.longitude || 0,
     description: i.descricao,
-    imageUrl: i.imagemUrl || "/images/churches/default.svg",
+    imageUrl: getChurchImageUrl(i.imagemUrl, i.id),
     activities: [],
   }
 }

@@ -10,9 +10,11 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
 import type { Church } from "@/lib/mock-data"
+import { getChurchImageUrl } from "@/lib/utils"
 import { listarCultosPorIgreja, vincularIgreja, type AtividadeApi } from "@/lib/api"
 
 interface ChurchCardProps {
+// ... (rest of the component)
   church: Church
   isFollowedInitial?: boolean
   activities?: AtividadeApi[]
@@ -99,7 +101,7 @@ export function ChurchCard({ church, isFollowedInitial, activities }: ChurchCard
         {/* Church Image */}
         <div className="relative h-44 w-full overflow-hidden">
           <Image
-            src={church.imageUrl}
+            src={getChurchImageUrl(church.imageUrl, church.id)}
             alt={"Foto da " + church.name}
             fill
             className="object-cover transition-transform duration-300 group-hover:scale-105"

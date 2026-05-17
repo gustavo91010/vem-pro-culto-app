@@ -1,5 +1,8 @@
 "use client"
 
+import { cn, getChurchImageUrl } from "@/lib/utils"
+
+// ... (omitindo imports repetidos por segurança se o replace lidar bem, mas vou colocar o bloco completo)
 import { useState, useMemo, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
@@ -13,6 +16,7 @@ import { listarTodasAtividades, listarTodasIgrejas, type AtividadeApi, type Igre
 import type { Activity, Church as ChurchType } from "@/lib/mock-data"
 
 function mapAtividadeToActivity(a: AtividadeApi): Activity & { churchName: string } {
+// ...
   const horario = new Date(a.horario)
   return {
     id: String(a.id),
@@ -40,7 +44,7 @@ function mapIgrejaToChurch(i: IgrejaApi): ChurchType {
     lat: (i as any).endereco?.latitude || i.latitude,
     lng: (i as any).endereco?.longitude || i.longitude,
     description: i.descricao,
-    imageUrl: i.imagemUrl || "/images/churches/default.svg",
+    imageUrl: getChurchImageUrl(i.imagemUrl, i.id),
     activities: [],
   }
 }
@@ -114,7 +118,7 @@ export default function HomePage() {
       <section className="relative mb-10 overflow-hidden rounded-2xl">
         <div className="relative h-64 sm:h-80 lg:h-96">
           <Image
-            src="/images/hero-banner.svg"
+            src="/images/hero-banner.jpg"
             alt="Vista aerea de igrejas na cidade"
             fill
             priority
