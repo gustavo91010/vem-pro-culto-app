@@ -74,7 +74,6 @@ export default function ActivityDetailPage({
               }
             })
             .catch((err) => {
-              console.error("Erro ao buscar igreja:", err)
               setApiData(null)
             })
         }

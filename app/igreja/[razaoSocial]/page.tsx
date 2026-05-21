@@ -24,6 +24,10 @@ import {
   Pencil,
   AlertTriangle,
   MessageCircle,
+  Instagram,
+  Facebook,
+  Youtube,
+  Twitter,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -451,14 +455,35 @@ export default function ChurchProfilePage({
               <CardTitle className="text-lg">Contato</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
-              {church.phone && (
+              {/* Telefones */}
+              {igrejaApi && igrejaApi.telefone && igrejaApi.telefone.length > 0 ? (
+                igrejaApi.telefone.map((tel, idx) => (
+                  <div key={idx} className="flex items-center gap-3 text-sm">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                      {tel.tipo === "WHATSAPP" ? (
+                        <MessageCircle className="h-4 w-4" />
+                      ) : (
+                        <Phone className="h-4 w-4" />
+                      )}
+                    </div>
+                    <div className="flex flex-col">
+                      <span>{tel.numero}</span>
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">
+                        {tel.tipo}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : church.phone ? (
                 <div className="flex items-center gap-3 text-sm">
                   <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                     <Phone className="h-4 w-4" />
                   </div>
                   <span>{church.phone}</span>
                 </div>
-              )}
+              ) : null}
+
+              {/* Email */}
               {church.email && (
                 <div className="flex items-center gap-3 text-sm">
                   <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
@@ -467,7 +492,51 @@ export default function ChurchProfilePage({
                   <span className="truncate">{church.email}</span>
                 </div>
               )}
-              {church.website && (
+
+              {/* Redes Sociais */}
+              {igrejaApi && igrejaApi.redesSociais && igrejaApi.redesSociais.length > 0 ? (
+                <div className="flex flex-col gap-3 pt-2">
+                  <Separator />
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {igrejaApi.redesSociais.map((rede, idx) => {
+                      const getIcon = (tipo: string, url: string) => {
+                        const t = tipo?.toUpperCase() || "";
+                        const u = url?.toLowerCase() || "";
+                        
+                        // Primeiro tenta pelo tipo
+                        if (t.includes("INSTA")) return <Instagram className="h-4 w-4" />
+                        if (t.includes("FACE")) return <Facebook className="h-4 w-4" />
+                        if (t.includes("YOUTUBE") || t.includes("YOUTU")) return <Youtube className="h-4 w-4" />
+                        if (t.includes("TWITTER") || t.includes("X")) return <Twitter className="h-4 w-4" />
+                        
+                        // Se for "SITE" ou outro, tenta descobrir pela URL
+                        if (u.includes("instagram.com")) return <Instagram className="h-4 w-4" />
+                        if (u.includes("facebook.com") || u.includes("fb.com")) return <Facebook className="h-4 w-4" />
+                        if (u.includes("youtube.com") || u.includes("youtu.be")) return <Youtube className="h-4 w-4" />
+                        if (u.includes("twitter.com") || u.includes("t.co") || u.includes("x.com")) return <Twitter className="h-4 w-4" />
+                        
+                        // Fallback para sites genéricos
+                        if (t.includes("SITE") || t.includes("WEB") || t.includes("GLOBE")) return <Globe className="h-4 w-4" />
+                        
+                        return <ExternalLink className="h-4 w-4" />
+                      }
+                      
+                      return (
+                        <Button key={idx} variant="outline" size="icon" asChild className="h-10 w-10">
+                          <a
+                            href={rede.url.startsWith('http') ? rede.url : `https://${rede.url}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={rede.tipo}
+                          >
+                            {getIcon(rede.tipo, rede.url)}
+                          </a>
+                        </Button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : church.website ? (
                 <div className="flex items-center gap-3 text-sm">
                   <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                     <Globe className="h-4 w-4" />
@@ -482,7 +551,7 @@ export default function ChurchProfilePage({
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 </div>
-              )}
+              ) : null}
             </CardContent>
           </Card>
 

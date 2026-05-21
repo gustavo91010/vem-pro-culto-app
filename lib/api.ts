@@ -1,4 +1,8 @@
 // const API_BASE_URL = "/api/vpc";
+
+import { log } from "console";
+import { Cossette_Titre } from "next/font/google";
+
 // const AUTH_API_BASE_URL = "/api/auth";
 const API_BASE_URL = "/api-vpc";
 const AUTH_API_BASE_URL = "/api-auth";
@@ -8,7 +12,6 @@ const APPLICATION_NAME = "vem-pro-culto";
 function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
   const token = localStorage.getItem("vpc_token");
-  console.log('[getAuthToken] Token no localStorage:', token ? 'Encontrado' : 'NÃO ENCONTRADO');
   if (!token) return null;
   // Se já tiver Bearer, retorna como está. Se não, adiciona.
   // O backend geralmente espera "Bearer <token>"
@@ -28,7 +31,7 @@ async function fetchApi<T>(
   const authHeader = (options?.headers as any)?.["Authorization"] || "Nenhum";
   const authSnippet = authHeader !== "Nenhum" ? `${authHeader.substring(0, 20)}...` : "Nenhum";
 
-  console.log(`[fetchApi] ${isServer ? '[SERVER]' : '[CLIENT]'} Chamando: ${options?.method || "GET"} ${url} | Auth: ${authSnippet}`);
+  // console.log(`[fetchApi] ${isServer ? '[SERVER]' : '[CLIENT]'} Chamando: ${options?.method || "GET"} ${url} | Auth: ${authSnippet}`);
 
   try {
     const res = await fetch(url, {
@@ -40,17 +43,18 @@ async function fetchApi<T>(
       },
     });
 
-    console.log(`[fetchApi] Resposta de ${url}: Status ${res.status}`);
+    // console.log(`[fetchApi] Resposta de ${url}: Status ${res.status}`);
 
     if (!res.ok) {
       let errorMsg = `Erro ${res.status}: ${res.statusText}`;
       
       try {
         const responseText = await res.text();
-        console.log(`[fetchApi] Erro de ${url} (corpo):`, responseText);
+        // console.log(`[fetchApi] Erro de ${url} (corpo):`, responseText);
         
         try {
           const errorJson = JSON.parse(responseText);
+          // console.log("erro lalala", errorJson.message);
           
           // Tenta extrair a mensagem mais específica possível
           if (errorJson.message && typeof errorJson.message === 'string') {
@@ -65,6 +69,7 @@ async function fetchApi<T>(
           } else if (errorJson.developerMessage && Array.isArray(errorJson.developerMessage)) {
             errorMsg = errorJson.developerMessage[0] || errorMsg;
           }
+          
         } catch (e) {
           // Se não for JSON, usa o texto puro se existir
           if (responseText && responseText.length < 200) {
@@ -72,6 +77,7 @@ async function fetchApi<T>(
           }
         }
       } catch (e) {
+        // console.log("aqui nao né...")
         console.error('[fetchApi] Falha ao ler corpo do erro:', e);
       }
       
@@ -79,10 +85,8 @@ async function fetchApi<T>(
     }
 
     const data = await res.json();
-    console.log(`[fetchApi] JSON recebido de ${url}:`, data);
     return data;
   } catch (error) {
-    console.error(`[fetchApi] Erro em ${url}:`, error);
     throw error;
   }
 }
@@ -258,7 +262,6 @@ export async function listarTodasIgrejas(incluirInativas = false): Promise<Igrej
 
 export async function listarIgrejasDoUsuario(): Promise<IgrejaApi[]> {
   const token = getAuthToken();
-  console.log('[listarIgrejasDoUsuario] Iniciando busca com token:', token ? 'Presente' : 'Ausente');
   
   if (!token) return [];
 
@@ -266,13 +269,13 @@ export async function listarIgrejasDoUsuario(): Promise<IgrejaApi[]> {
     const data = await fetchApi<any>(API_BASE_URL, "/igreja/do-usuario", {
       headers: { Authorization: token },
     });
-    console.log('[listarIgrejasDoUsuario] Dados brutos recebidos:', data);
+    // console.log('[listarIgrejasDoUsuario] Dados brutos recebidos:', data);
     
     const lista = Array.isArray(data) ? data : (data.igrejas || []);
-    console.log('[listarIgrejasDoUsuario] Lista final processada:', lista);
+    // console.log('[listarIgrejasDoUsuario] Lista final processada:', lista);
     return lista;
   } catch (error) {
-    console.error('[listarIgrejasDoUsuario] Erro fatal na chamada:', error);
+    // console.error('[listarIgrejasDoUsuario] Erro fatal na chamada:', error);
     return [];
   }
 }
@@ -286,7 +289,7 @@ export async function registrarIgreja(igreja: IgrejaRequest): Promise<IgrejaApi>
     headers: { Authorization: token },
     body: JSON.stringify(igreja),
   });
-  console.log("registrarIgreja", data);
+  // console.log("registrarIgreja", data);
   
 return data;
 }

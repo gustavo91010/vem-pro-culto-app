@@ -28,9 +28,7 @@ export default function MapView({ churches, focusChurchId }: Props) {
   const markersLayerRef = useRef<L.LayerGroup | null>(null)
 
   const handleLocateMe = () => {
-    console.log("[MapView] Tentando obter localização...");
     if (!navigator.geolocation) {
-      console.error("[MapView] Geolocation não suportada ou bloqueada por falta de HTTPS.");
       toast.error("Geolocalização indisponível. Verifique se está usando HTTPS ou localhost.");
       return
     }
@@ -38,13 +36,11 @@ export default function MapView({ churches, focusChurchId }: Props) {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords
-        console.log("[MapView] Localização obtida:", latitude, longitude);
         if (mapRef.current) {
           mapRef.current.flyTo([latitude, longitude], 15)
         }
       },
       (error) => {
-        console.error("Erro ao obter localização:", error)
         if (error.code === 1) {
           toast.error("Permissão de localização negada pelo navegador.")
         } else if (error.code === 3) {

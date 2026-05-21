@@ -92,7 +92,6 @@ export default function HomePage() {
         setUpcomingActivities(mapped)
       })
       .catch((err) => {
-        console.error("Erro ao buscar atividades:", err)
         setUpcomingActivities([])
       })
 
@@ -104,7 +103,6 @@ export default function HomePage() {
         }
       })
       .catch((err) => {
-        console.error("Erro ao buscar igrejas:", err)
         setApiChurches([])
       })
   }, []) // Removido 'user' das dependencias para carregar sempre

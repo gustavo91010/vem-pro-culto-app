@@ -36,7 +36,6 @@ export default function RegistrarIgrejaPage() {
     setIsSubmitting(true)
     try {
       const igreja_registrada = await registrarIgreja(data)
-      console.log('[handleSave] Igreja registrada com sucesso:', igreja_registrada);
       
       toast.success("Igreja cadastrada com sucesso! Nossa equipe irá revisar os dados.")
       router.push("/minhas-igrejas") 

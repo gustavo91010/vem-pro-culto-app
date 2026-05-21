@@ -62,7 +62,6 @@ export function ChurchForm({ church, onSave, onCancel }: ChurchFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Iniciando submissão do formulário...")
     toast.info("Processando cadastro da igreja...")
 
     // Remove pontos, traços e barras para enviar apenas números
@@ -90,7 +89,6 @@ export function ChurchForm({ church, onSave, onCancel }: ChurchFormProps) {
       redesSociais: website ? [{ url: website, tipo: "SITE" }] : [],
     }
 
-    console.log("Dados enviados (limpos):", request)
     onSave(request)
   }
 

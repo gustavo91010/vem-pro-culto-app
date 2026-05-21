@@ -43,7 +43,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Atualiza o cache local
       localStorage.setItem("auth_user_data", JSON.stringify(userData))
     } catch (e) {
-      console.error("Sessão expirada ou erro ao carregar usuário")
       if (savedUser) {
         setUser(savedUser)
       } else {
@@ -108,7 +107,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return { success: false, error: "Credenciais invalidas." }
     } catch (error: any) {
-      console.error("Erro no login:", error)
       return { success: false, error: error.message || "Erro ao conectar com o servidor." }
     } finally {
       setIsLoading(false)
@@ -138,7 +136,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         return { success: false, error: "Erro ao criar conta." }
       } catch (error: any) {
-        console.error("Erro no registro:", error)
         return { success: false, error: error.message || "Erro ao conectar com o servidor." }
       } finally {
         setIsLoading(false)
