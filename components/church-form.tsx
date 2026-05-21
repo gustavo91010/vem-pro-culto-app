@@ -23,6 +23,7 @@ export function ChurchForm({ church, onSave, onCancel }: ChurchFormProps) {
   const [cnpj, setCnpj] = useState("")
   const [email, setEmail] = useState(church?.email || "")
   const [cep, setCep] = useState(church?.endereco?.cep || "")
+  const [estado, setEstado] = useState(church?.endereco?.estado || "")
   const [logradouro, setLogradouro] = useState(church?.endereco?.logradouro || "")
   const [numero, setNumero] = useState(church?.endereco?.numero || "")
   const [city, setCity] = useState(church?.endereco?.cidade || church?.cidade || "")
@@ -49,6 +50,7 @@ export function ChurchForm({ church, onSave, onCancel }: ChurchFormProps) {
         setLogradouro(data.logradouro)
         setNeighborhood(data.bairro)
         setCity(data.localidade)
+        setEstado(data.uf)
         toast.success("Endereço preenchido pelo CEP")
       } else {
         toast.error("CEP não encontrado")
@@ -79,7 +81,7 @@ export function ChurchForm({ church, onSave, onCancel }: ChurchFormProps) {
         numero: numero || "S/N",
         bairro: neighborhood,
         cidade: city,
-        estado: "SP",
+        estado: estado || "PE",
         cep: cleanCep,
         pais: "Brasil",
         latitude: -23.5505,
